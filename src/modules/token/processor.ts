@@ -47,12 +47,15 @@ export async function processTokenMessage(rawPayload: unknown): Promise<Deployme
         break
     }
 
+    const { explorerUrl } = getNetworkConfig(message.network)
     captureMessage('Token deployment succeeded', 'info', {
       correlationId,
       contractAddress: result.contractAddress,
       txHash: result.transactionHash,
       type: result.type,
       network: result.network,
+      explorerContractUrl: `${explorerUrl}/address/${result.contractAddress}`,
+      explorerTxUrl: `${explorerUrl}/tx/${result.transactionHash}`,
     })
 
     return result
