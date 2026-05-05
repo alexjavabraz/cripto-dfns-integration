@@ -9,7 +9,7 @@ export function getDfnsClient(): DfnsApiClient {
 
   const signer = new AsymmetricKeySigner({
     credId: env.DFNS_CRED_ID,
-    privateKey: env.DFNS_PRIVATE_KEY,
+    privateKey: env.DFNS_PRIVATE_KEY.replace(/\\n/g, '\n'),
   })
 
   _dfnsClient = new DfnsApiClient({
