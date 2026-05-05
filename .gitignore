@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.test
+*.env.local
+cache/
+coverage/
+typechain-types/
+# Keep artifacts/ (compiled contracts needed at runtime)
+artifacts/contracts/**/*.dbg.json

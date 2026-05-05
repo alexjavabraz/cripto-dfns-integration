@@ -1,0 +1,36 @@
+import * as Sentry from '@sentry/node'
+import { env } from './env.js'
+
+export function initSentry(): void {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    sendDefaultPii: true,
+    integrations: [Sentry.httpIntegration()],
+  })
+}
+
+export function captureError(error: unknown, context?: Record<string, unknown>): void {
+  Sentry.withScope((scope) => {
+    if (context) {
+      scope.setExtras(context)
+    }
+    Sentry.captureException(error)
+  })
+}
+
+export function captureMessage(
+  message: string,
+  level: Sentry.SeverityLevel = 'info',
+  context?: Record<string, unknown>,
+): void {
+  Sentry.withScope((scope) => {
+    if (context) {
+      scope.setExtras(context)
+    }
+    Sentry.captureMessage(message, level)
+  })
+}
+
+export { Sentry }
