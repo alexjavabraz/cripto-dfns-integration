@@ -49,6 +49,8 @@ function categorizeError(error: unknown): {
 function mapToTokenMessage(msg: CreationRequestMessage): unknown {
   const base = {
     type: msg.token.standard,
+    idempotencyKey: msg.idempotencyKey,
+    timestamp: msg.timestamp,
     network: msg.network.name,
     correlationId: newCorrelationId(), // must be UUID for internal schema
     ownerAddress: msg.token.ownerAddress,

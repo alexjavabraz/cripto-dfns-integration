@@ -10,7 +10,8 @@
  *   node scripts/publish-test-message.mjs ERC721 polygon
  *   node scripts/publish-test-message.mjs ERC1155 arbitrum
  *
- * Env vars read from .env file (RABBITMQ_URL, RABBITMQ_QUEUE).
+ * Publishes to token_creation_request queue (canonical format).
+ * Env vars read from .env file (RABBITMQ_URL, RABBITMQ_CREATION_QUEUE).
  */
 
 import amqplib from 'amqplib'
@@ -39,46 +40,71 @@ function loadEnv() {
 
 const env = loadEnv()
 const RABBITMQ_URL = env.RABBITMQ_URL || 'amqp://localhost'
-const QUEUE = env.RABBITMQ_QUEUE || 'token.create'
+const QUEUE = env.RABBITMQ_CREATION_QUEUE || 'token_creation_request'
 
-// --- Message templates ---
+// --- Network chain IDs ---
+const CHAIN_IDS = {
+  ethereum: 11155111, // Sepolia
+  polygon: 137,
+  arbitrum: 42161,
+}
+
 const OWNER = '0x6d5dad0641990e5902723647c7ec33eb4020e7c7'
 
 const type = (process.argv[2] || 'ERC20').toUpperCase()
 const network = (process.argv[3] || 'ethereum').toLowerCase()
+const chainId = CHAIN_IDS[network]
+
+if (!chainId) {
+  console.error(`Unknown network: ${network}. Use ethereum, polygon or arbitrum.`)
+  process.exit(1)
+}
+
+const baseMessage = {
+  event: 'token.creation.requested',
+  idempotencyKey: randomUUID(),
+  timestamp: new Date().toISOString(),
+  network: { name: network, chainId },
+  metadata: {
+    requester: 'test-script',
+    correlationId: randomUUID(),
+  },
+}
 
 const messages = {
   ERC20: {
-    type: 'ERC20',
-    idempotencyKey: randomUUID(),
-    timestamp: new Date().toISOString(),
-    network,
-    correlationId: randomUUID(),
-    name: 'Test Token',
-    symbol: 'TST',
-    decimals: 18,
-    supply: 1_000_000,
-    ownerAddress: OWNER,
+    ...baseMessage,
+    token: {
+      standard: 'ERC20',
+      name: 'Test Token',
+      symbol: 'TST',
+      ownerAddress: OWNER,
+    },
+    params: {
+      erc20: { decimals: 18, supply: 1_000_000 },
+    },
   },
   ERC721: {
-    type: 'ERC721',
-    idempotencyKey: randomUUID(),
-    timestamp: new Date().toISOString(),
-    network,
-    correlationId: randomUUID(),
-    name: 'Test NFT',
-    symbol: 'TNFT',
-    ownerAddress: OWNER,
-    metadata: { uri: 'https://example.com/metadata/{id}.json' },
+    ...baseMessage,
+    token: {
+      standard: 'ERC721',
+      name: 'Test NFT',
+      symbol: 'TNFT',
+      ownerAddress: OWNER,
+    },
+    params: {
+      erc721: { baseUri: 'https://example.com/metadata/{id}.json' },
+    },
   },
   ERC1155: {
-    type: 'ERC1155',
-    idempotencyKey: randomUUID(),
-    timestamp: new Date().toISOString(),
-    network,
-    correlationId: randomUUID(),
-    ownerAddress: OWNER,
-    metadata: { uri: 'https://example.com/metadata/{id}.json' },
+    ...baseMessage,
+    token: {
+      standard: 'ERC1155',
+      ownerAddress: OWNER,
+    },
+    params: {
+      erc1155: { uri: 'https://example.com/metadata/{id}.json' },
+    },
   },
 }
 
