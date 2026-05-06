@@ -286,6 +286,32 @@ Payload:
 Message published successfully.
 ```
 
+### Smoke test (end-to-end on startup)
+
+Set `SMOKE_TEST=true` to run a full end-to-end deployment test before the service accepts traffic.
+
+The test:
+1. Publishes an ERC-20 deployment request to `token_creation_request`
+2. Waits for the consumer to deploy the contract via DFNS
+3. Listens on `token_created` / `token_creation_error` exchanges for the result
+4. If deployment succeeds → service starts normally
+5. If it fails or times out (5 min) → logs the error, sends to Sentry and **exits with code 1**
+
+Required extra env var:
+
+| Variable | Description |
+|---|---|
+| `SMOKE_TEST` | Set to `true` to enable (default: disabled) |
+| `TEST_OWNER_ADDRESS` | Ethereum address (`0x...`) that will own the test token — required when `SMOKE_TEST=true` |
+
+```bash
+# Run with smoke test
+docker run --env-file .env -e SMOKE_TEST=true -e TEST_OWNER_ADDRESS=0xYourAddress -p 3000:3000 dfns-integration
+
+# Or locally
+SMOKE_TEST=true TEST_OWNER_ADDRESS=0xYourAddress npm run dev
+```
+
 ## Docker
 
 ```bash

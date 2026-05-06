@@ -5,6 +5,7 @@ import { buildApp } from './app.js'
 import { connect, disconnect } from './modules/rabbitmq/connection.js'
 import { startConsumer } from './modules/rabbitmq/consumer.js'
 import { startCreationConsumer } from './modules/rabbitmq/creation-consumer.js'
+import { runSmokeTest } from './smoke-test.js'
 
 // Initialize Sentry first — before anything else can throw
 initSentry()
@@ -19,8 +20,25 @@ async function main(): Promise<void> {
 
   // --- Connect to RabbitMQ and start consuming ---
   const channel = await connect()
-  await startConsumer(channel)
+
+  // Creation consumer must start before smoke test so it can process the test message
   await startCreationConsumer(channel)
+
+  // --- Optional smoke test ---
+  if (env.SMOKE_TEST) {
+    logger.info('Smoke test enabled — running end-to-end deployment test before accepting traffic')
+    try {
+      await runSmokeTest(channel)
+      logger.info('Smoke test completed successfully — starting service')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      logger.error('Smoke test failed — aborting startup', { error: msg })
+      captureError(error, { context: 'smoke-test' })
+      process.exit(1)
+    }
+  }
+
+  await startConsumer(channel)
 
   // --- Graceful shutdown ---
   const shutdown = async (signal: string): Promise<void> => {
