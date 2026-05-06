@@ -5,7 +5,7 @@ import { deployERC20 } from './erc20.js'
 import { deployERC721 } from './erc721.js'
 import { deployERC1155 } from './erc1155.js'
 import { tokenMessageSchema, type DeploymentResult } from '../../schemas/token.schema.js'
-import { captureMessage } from '../../config/sentry.js'
+import { captureError, captureMessage } from '../../config/sentry.js'
 import { logger } from '../../utils/logger.js'
 import { newCorrelationId, sanitizePayload } from '../../utils/correlation.js'
 
@@ -16,9 +16,11 @@ export async function processTokenMessage(rawPayload: unknown): Promise<Deployme
   const parsed = tokenMessageSchema.safeParse(rawPayload)
   if (!parsed.success) {
     const issues = parsed.error.flatten()
-    logger.warn('Invalid token message received', { correlationId, issues })
-    captureMessage('Invalid RabbitMQ payload', 'warning', { correlationId, issues })
-    throw new Error(`Invalid token message: ${JSON.stringify(issues)}`)
+    const missingFields = Object.keys(issues.fieldErrors)
+    logger.error('Invalid token message received', { correlationId, issues })
+    const validationError = new Error(`Invalid token message: missing or invalid fields: ${missingFields.join(', ')}`)
+    captureError(validationError, { correlationId, fieldErrors: issues.fieldErrors, formErrors: issues.formErrors })
+    throw validationError
   }
 
   const message = { ...parsed.data, correlationId: parsed.data.correlationId ?? correlationId }

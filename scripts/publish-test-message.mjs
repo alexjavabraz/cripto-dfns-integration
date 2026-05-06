@@ -50,6 +50,8 @@ const network = (process.argv[3] || 'ethereum').toLowerCase()
 const messages = {
   ERC20: {
     type: 'ERC20',
+    idempotencyKey: randomUUID(),
+    timestamp: new Date().toISOString(),
     network,
     correlationId: randomUUID(),
     name: 'Test Token',
@@ -60,6 +62,8 @@ const messages = {
   },
   ERC721: {
     type: 'ERC721',
+    idempotencyKey: randomUUID(),
+    timestamp: new Date().toISOString(),
     network,
     correlationId: randomUUID(),
     name: 'Test NFT',
@@ -69,6 +73,8 @@ const messages = {
   },
   ERC1155: {
     type: 'ERC1155',
+    idempotencyKey: randomUUID(),
+    timestamp: new Date().toISOString(),
     network,
     correlationId: randomUUID(),
     ownerAddress: OWNER,

@@ -39,25 +39,18 @@ const erc1155Fields = z.object({
   metadata: z.object({ uri: z.string().url().max(2048) }),
 })
 
+const baseFields = z.object({
+  idempotencyKey: z.string().min(1),
+  timestamp: z.string().datetime(),
+  network: Network,
+  correlationId: z.string().uuid().optional(),
+})
+
 // Discriminated union based on token type
 export const tokenMessageSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('ERC20'),
-    network: Network,
-    correlationId: z.string().uuid().optional(),
-  }).merge(erc20Fields),
-
-  z.object({
-    type: z.literal('ERC721'),
-    network: Network,
-    correlationId: z.string().uuid().optional(),
-  }).merge(erc721Fields),
-
-  z.object({
-    type: z.literal('ERC1155'),
-    network: Network,
-    correlationId: z.string().uuid().optional(),
-  }).merge(erc1155Fields),
+  baseFields.extend({ type: z.literal('ERC20') }).merge(erc20Fields),
+  baseFields.extend({ type: z.literal('ERC721') }).merge(erc721Fields),
+  baseFields.extend({ type: z.literal('ERC1155') }).merge(erc1155Fields),
 ])
 
 export type TokenMessage = z.infer<typeof tokenMessageSchema>

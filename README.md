@@ -201,6 +201,70 @@ node scripts/publish-test-message.mjs ERC1155 arbitrum
 | `type` | `ERC20`, `ERC721`, `ERC1155` | `ERC20` |
 | `network` | `ethereum`, `polygon`, `arbitrum` | `ethereum` |
 
+### Payload format — `token.create` queue
+
+All messages must include `idempotencyKey` and `timestamp`. Missing fields produce an error-level Sentry event with the list of invalid fields.
+
+**ERC-20**
+```json
+{
+  "type": "ERC20",
+  "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": "ethereum",
+  "correlationId": "a3f843a8-68c6-43ff-b819-c48ec99ed91f",
+  "name": "Test Token",
+  "symbol": "TST",
+  "decimals": 18,
+  "supply": 1000000,
+  "ownerAddress": "0x6d5dad0641990e5902723647c7ec33eb4020e7c7"
+}
+```
+
+**ERC-721**
+```json
+{
+  "type": "ERC721",
+  "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": "polygon",
+  "correlationId": "b4g954c9-79d7-54gg-c920-b59fd00fe02g",
+  "name": "Test NFT",
+  "symbol": "TNFT",
+  "ownerAddress": "0x6d5dad0641990e5902723647c7ec33eb4020e7c7",
+  "metadata": { "uri": "https://example.com/metadata/{id}.json" }
+}
+```
+
+**ERC-1155**
+```json
+{
+  "type": "ERC1155",
+  "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": "arbitrum",
+  "correlationId": "c5h065d0-80e8-65hh-d031-c60ge11gf13h",
+  "ownerAddress": "0x6d5dad0641990e5902723647c7ec33eb4020e7c7",
+  "metadata": { "uri": "https://example.com/metadata/{id}.json" }
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `ERC20` \| `ERC721` \| `ERC1155` | Yes | Token standard |
+| `idempotencyKey` | string | Yes | Unique key to prevent duplicate deployments |
+| `timestamp` | ISO 8601 datetime | Yes | Message creation time |
+| `network` | `ethereum` \| `polygon` \| `arbitrum` | Yes | Target network |
+| `correlationId` | UUID | No | Tracing ID (auto-generated if absent) |
+| `name` | string (max 64) | ERC20/721 | Token name |
+| `symbol` | string (max 11) | ERC20/721 | Token symbol |
+| `decimals` | integer 0–18 | ERC20 | Decimal places (default: 18) |
+| `supply` | positive integer | ERC20 | Initial total supply |
+| `ownerAddress` | `0x...` (40 hex chars) | Yes | Token owner wallet address |
+| `metadata.uri` | URL (max 2048) | ERC1155 | Metadata base URI |
+
+If `idempotencyKey`, `timestamp`, or any required field is missing or invalid, the message is rejected immediately and an **error** is sent to Sentry with the list of invalid fields — the message is not retried.
+
 The script prints the exact payload published and confirms delivery:
 
 ```
@@ -208,8 +272,10 @@ Publishing to queue: token.create
 Payload:
 {
   "type": "ERC20",
+  "idempotencyKey": "d5be0284-00f8-4e0a-8c5c-dbd01a682480",
+  "timestamp": "2026-05-06T12:00:00.000Z",
   "network": "ethereum",
-  "correlationId": "d5be0284-...",
+  "correlationId": "a3f843a8-68c6-43ff-b819-c48ec99ed91f",
   "name": "Test Token",
   "symbol": "TST",
   "decimals": 18,
