@@ -18,6 +18,8 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
     }
     Sentry.captureException(error)
   })
+  // Flush synchronously so the event is sent even in short-lived handlers
+  void Sentry.flush(3000)
 }
 
 export function captureMessage(

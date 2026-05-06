@@ -5,7 +5,7 @@ import { deployERC20 } from './erc20.js'
 import { deployERC721 } from './erc721.js'
 import { deployERC1155 } from './erc1155.js'
 import { tokenMessageSchema, type DeploymentResult } from '../../schemas/token.schema.js'
-import { captureError, captureMessage } from '../../config/sentry.js'
+import { captureMessage } from '../../config/sentry.js'
 import { logger } from '../../utils/logger.js'
 import { newCorrelationId, sanitizePayload } from '../../utils/correlation.js'
 
@@ -67,7 +67,6 @@ export async function processTokenMessage(rawPayload: unknown): Promise<Deployme
         ? { httpStatus: (error as unknown as { httpStatus: number }).httpStatus, context: (error as unknown as { context: unknown }).context }
         : undefined,
     })
-    captureError(error, { correlationId, payload: safePayload })
     throw error
   }
 }
