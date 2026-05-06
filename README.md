@@ -177,6 +177,49 @@ npm run dev
 | `NETWORK_ERROR` | RPC connection issues | Yes |
 | `UNKNOWN_ERROR` | Catch-all | No |
 
+## Testing
+
+### Publishing test messages to RabbitMQ
+
+Use the script `scripts/publish-test-message.mjs` to send a test deployment message directly to the queue. It reads `RABBITMQ_URL` and `RABBITMQ_QUEUE` from the `.env` file automatically.
+
+```bash
+# ERC-20 on Ethereum (default)
+node scripts/publish-test-message.mjs
+
+# ERC-721 on Polygon
+node scripts/publish-test-message.mjs ERC721 polygon
+
+# ERC-1155 on Arbitrum
+node scripts/publish-test-message.mjs ERC1155 arbitrum
+```
+
+**Syntax:** `node scripts/publish-test-message.mjs [type] [network]`
+
+| Argument | Values | Default |
+|---|---|---|
+| `type` | `ERC20`, `ERC721`, `ERC1155` | `ERC20` |
+| `network` | `ethereum`, `polygon`, `arbitrum` | `ethereum` |
+
+The script prints the exact payload published and confirms delivery:
+
+```
+Publishing to queue: token.create
+Payload:
+{
+  "type": "ERC20",
+  "network": "ethereum",
+  "correlationId": "d5be0284-...",
+  "name": "Test Token",
+  "symbol": "TST",
+  "decimals": 18,
+  "supply": 1000000,
+  "ownerAddress": "0x6d5dad0641990e5902723647c7ec33eb4020e7c7"
+}
+
+Message published successfully.
+```
+
 ## Docker
 
 ```bash
