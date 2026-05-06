@@ -31,6 +31,14 @@ const envSchema = z.object({
   RABBITMQ_CREATED_EXCHANGE: z.string().default('token_created'),
   RABBITMQ_ERROR_EXCHANGE: z.string().default('token_creation_error'),
 
+  // Balance query
+  QUEUE_GET_BALANCE: z.string().default('queue_get_balance'),
+  EXCHANGE_BALANCE_RESPONSE: z.string().default('balance_response'),
+
+  // Token event operations (mint, burn, pause, unpause)
+  TOKEN_EVENT: z.string().default('token_event'),
+  EXCHANGE_TOKEN_EVENT_RESPONSE: z.string().default('token_event_response'),
+
   // Sentry
   SENTRY_DSN: z.string().url(),
 

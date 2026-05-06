@@ -6,6 +6,8 @@ import { connect, disconnect } from './modules/rabbitmq/connection.js'
 import { startConsumer } from './modules/rabbitmq/consumer.js'
 import { startCreationConsumer } from './modules/rabbitmq/creation-consumer.js'
 import { runSmokeTest } from './smoke-test.js'
+import { startBalanceConsumer } from './modules/rabbitmq/balance-consumer.js'
+import { startTokenEventConsumer } from './modules/rabbitmq/token-event-consumer.js'
 
 // Initialize Sentry first — before anything else can throw
 initSentry()
@@ -39,6 +41,8 @@ async function main(): Promise<void> {
   }
 
   await startConsumer(channel)
+  await startBalanceConsumer(channel)
+  await startTokenEventConsumer(channel)
 
   // --- Graceful shutdown ---
   const shutdown = async (signal: string): Promise<void> => {

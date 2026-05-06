@@ -64,6 +64,10 @@ npm run dev
 | `RABBITMQ_CREATION_QUEUE` | Creation request queue (default: `token_creation_request`) |
 | `RABBITMQ_CREATED_EXCHANGE` | Success exchange (default: `token_created`) |
 | `RABBITMQ_ERROR_EXCHANGE` | Error exchange (default: `token_creation_error`) |
+| `QUEUE_GET_BALANCE` | Queue for balance query requests (default: `queue_get_balance`) |
+| `EXCHANGE_BALANCE_RESPONSE` | Exchange for balance query responses (default: `balance_response`) |
+| `TOKEN_EVENT` | Exchange for token admin operations — mint, burn, pause, unpause (default: `token_event`) |
+| `EXCHANGE_TOKEN_EVENT_RESPONSE` | Exchange for token event results (default: `token_event_response`) |
 | `SENTRY_DSN` | Sentry DSN for error tracking |
 
 ## RabbitMQ
@@ -76,6 +80,11 @@ npm run dev
 | `token.create` | queue | input (legacy) |
 | `token_created` | topic exchange | output (success) |
 | `token_creation_error` | topic exchange | output (error) |
+| `queue_get_balance` | queue | input — balance query requests |
+| `balance_response` | topic exchange | output — balance query responses |
+| `token_event` | topic exchange | input — token admin operations (subscribe) |
+| `token_event.queue` | queue (bound to `token_event` `#`) | internal consumer queue |
+| `token_event_response` | topic exchange | output — token operation results |
 
 ### Input Message — `token_creation_request`
 
@@ -176,6 +185,219 @@ npm run dev
 | `DEPLOYMENT_FAILED` | Contract deployment or DFNS error | No |
 | `NETWORK_ERROR` | RPC connection issues | Yes |
 | `UNKNOWN_ERROR` | Catch-all | No |
+
+---
+
+### Balance Query — `queue_get_balance`
+
+Queries an ERC-20 token balance for a given wallet address directly from the RPC node. No DFNS wallet required. Result is published to the `balance_response` exchange.
+
+**Request** (routing key: `token.balance.requested`)
+
+```json
+{
+  "event": "token.balance.requested",
+  "idempotencyKey": "bal-001",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": {
+    "name": "ethereum",
+    "chainId": 11155111
+  },
+  "token": {
+    "address": "0xTokenContractAddress"
+  },
+  "wallet": {
+    "address": "0xWalletAddress"
+  },
+  "metadata": {
+    "requester": "my-service",
+    "correlationId": "corr-bal-001"
+  }
+}
+```
+
+**Response — success** (routing key: `token.balance.responded`)
+
+```json
+{
+  "event": "token.balance.responded",
+  "idempotencyKey": "bal-001",
+  "timestamp": "2026-05-06T12:00:00.500Z",
+  "network": { "name": "ethereum", "chainId": 11155111 },
+  "token": {
+    "address": "0xTokenContractAddress",
+    "name": "My Token",
+    "symbol": "MTK",
+    "decimals": 18
+  },
+  "wallet": { "address": "0xWalletAddress" },
+  "balance": {
+    "raw": "1000000000000000000",
+    "formatted": "1.0"
+  },
+  "metadata": {
+    "correlationId": "corr-bal-001",
+    "processedBy": "dfns-integration",
+    "durationMs": 210
+  }
+}
+```
+
+**Response — error** (routing key: `token.balance.failed`)
+
+```json
+{
+  "event": "token.balance.failed",
+  "idempotencyKey": "bal-001",
+  "timestamp": "2026-05-06T12:00:00.500Z",
+  "network": { "name": "ethereum", "chainId": 11155111 },
+  "error": {
+    "code": "QUERY_FAILED",
+    "message": "call revert exception..."
+  },
+  "metadata": {
+    "correlationId": "corr-bal-001",
+    "processedBy": "dfns-integration",
+    "durationMs": 180
+  }
+}
+```
+
+| Balance error code | Cause |
+|---|---|
+| `VALIDATION_ERROR` | Invalid request schema |
+| `QUERY_FAILED` | RPC call failed (wrong address, network error) |
+
+---
+
+### Token Admin Operations — `token_event` exchange
+
+Publishes admin operations (mint, burn, pause, unpause) to the `token_event` topic exchange. The service binds the durable queue `token_event.queue` to it with routing key `#`. Operations are executed via the DFNS wallet (must be contract owner). Results are published to `token_event_response`.
+
+**Request — mint ERC-20** (routing key: any)
+
+```json
+{
+  "event": "token.event.requested",
+  "idempotencyKey": "evt-mint-001",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": { "name": "ethereum", "chainId": 11155111 },
+  "token": {
+    "address": "0xTokenContractAddress",
+    "standard": "ERC20"
+  },
+  "operation": {
+    "type": "mint",
+    "params": {
+      "to": "0xRecipientAddress",
+      "amount": "1000000000000000000"
+    }
+  },
+  "metadata": { "requester": "my-service", "correlationId": "corr-evt-001" }
+}
+```
+
+**Request — mint ERC-721**
+
+```json
+{
+  "event": "token.event.requested",
+  "idempotencyKey": "evt-mint-nft-001",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": { "name": "polygon", "chainId": 137 },
+  "token": { "address": "0xNFTContractAddress", "standard": "ERC721" },
+  "operation": {
+    "type": "mint",
+    "params": { "to": "0xRecipientAddress" }
+  },
+  "metadata": { "requester": "my-service", "correlationId": "corr-evt-002" }
+}
+```
+
+**Request — burn ERC-20**
+
+```json
+{
+  "event": "token.event.requested",
+  "idempotencyKey": "evt-burn-001",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": { "name": "ethereum", "chainId": 11155111 },
+  "token": { "address": "0xTokenContractAddress", "standard": "ERC20" },
+  "operation": {
+    "type": "burn",
+    "params": {
+      "from": "0xHolderAddress",
+      "amount": "500000000000000000"
+    }
+  },
+  "metadata": { "requester": "my-service", "correlationId": "corr-evt-003" }
+}
+```
+
+**Request — pause / unpause**
+
+```json
+{
+  "event": "token.event.requested",
+  "idempotencyKey": "evt-pause-001",
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "network": { "name": "ethereum", "chainId": 11155111 },
+  "token": { "address": "0xTokenContractAddress", "standard": "ERC20" },
+  "operation": { "type": "pause" },
+  "metadata": { "requester": "my-service", "correlationId": "corr-evt-004" }
+}
+```
+
+**Response — success** (routing key: `token.event.succeeded`)
+
+```json
+{
+  "event": "token.event.succeeded",
+  "idempotencyKey": "evt-mint-001",
+  "timestamp": "2026-05-06T12:00:05.000Z",
+  "network": { "name": "ethereum", "chainId": 11155111 },
+  "token": { "address": "0xTokenContractAddress", "standard": "ERC20" },
+  "operation": { "type": "mint" },
+  "result": {
+    "txHash": "0xDEF...",
+    "blockNumber": 12345679,
+    "gasUsed": "55000"
+  },
+  "explorer": { "transactionUrl": "https://sepolia.etherscan.io/tx/0xDEF..." },
+  "metadata": {
+    "correlationId": "corr-evt-001",
+    "processedBy": "dfns-integration",
+    "durationMs": 4500
+  }
+}
+```
+
+**Response — error** (routing key: `token.event.failed`)
+
+```json
+{
+  "event": "token.event.failed",
+  "idempotencyKey": "evt-mint-001",
+  "timestamp": "2026-05-06T12:00:01.000Z",
+  "network": { "name": "ethereum", "chainId": 11155111 },
+  "token": { "address": "0xTokenContractAddress", "standard": "ERC20" },
+  "operation": { "type": "mint" },
+  "error": {
+    "code": "EXECUTION_FAILED",
+    "message": "execution reverted: Ownable: caller is not the owner"
+  },
+  "metadata": {
+    "correlationId": "corr-evt-001",
+    "processedBy": "dfns-integration",
+    "durationMs": 900
+  }
+}
+```
+
+| Token event error code | Cause |
+|---|---|
+| `VALIDATION_ERROR` | Invalid request schema |
+| `EXECUTION_FAILED` | Transaction reverted or DFNS signing error |
 
 ## Testing
 
