@@ -11,14 +11,21 @@ export function getDfnsClient(): DfnsApiClient {
 
   const pemString = env.DFNS_PRIVATE_KEY.replace(/\\n/g, '\n')
 
-  // Pre-parse the key at startup so OpenSSL decodes it once (eager) rather than
-  // inside crypto.sign() during every signing request (lazy). This surfaces any
-  // DECODER error immediately and avoids the "DECODER routines::unsupported" failure
-  // that can occur on Alpine Linux / OpenSSL 3 when a raw PEM string is decoded
-  // inside an active signing call.
+  // Parse the key via DER (binary) rather than passing the PEM string directly to
+  // OpenSSL. Alpine Linux / OpenSSL 3 has a known issue where the PEM DECODER
+  // module fails with "DECODER routines::unsupported" even for valid PKCS#8 RSA
+  // keys. Extracting the Base64 payload and decoding it to DER ourselves bypasses
+  // the PEM DECODER entirely and uses the always-supported DER decoder instead.
   let privateKey: nodeCrypto.KeyObject
   try {
-    privateKey = nodeCrypto.createPrivateKey(pemString)
+    const derBuffer = Buffer.from(
+      pemString
+        .replace(/-----BEGIN[^-]*-----/, '')
+        .replace(/-----END[^-]*-----/, '')
+        .replace(/\s+/g, ''),
+      'base64',
+    )
+    privateKey = nodeCrypto.createPrivateKey({ key: derBuffer, format: 'der', type: 'pkcs8' })
     logger.info('DFNS private key loaded successfully', { keyType: privateKey.asymmetricKeyType })
   } catch (err) {
     logger.error('Failed to load DFNS private key — check DFNS_PRIVATE_KEY format', { err })
