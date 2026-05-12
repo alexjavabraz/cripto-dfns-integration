@@ -156,6 +156,7 @@ jobs:
           sed -i "s|__SECRET_DFNS_PRIVATE_KEY__|${SECRET_ARN_DFNS_PRIVATE_KEY}|g" task-definition.json
           sed -i "s|__SECRET_RABBITMQ_URL__|${SECRET_ARN_RABBITMQ_URL}|g" task-definition.json
           sed -i "s|__SECRET_SENTRY_DSN__|${SECRET_ARN_SENTRY_DSN}|g" task-definition.json
+          sed -i "s|__IMAGE_URI__|${{ steps.image.outputs.image_uri }}|g" task-definition.json
 
       - name: Inject image into task definition
         id: render-task-def
@@ -165,20 +166,6 @@ jobs:
           container-name: dfns-integration
           image: ${{ steps.image.outputs.image_uri }}
 
-      - name: Enforce service reliability settings
-        env:
-          ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
-          ECS_SERVICE: ${{ vars.ECS_SERVICE }}
-          ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
-        run: |
-          set -eu
-          ECS_DESIRED_COUNT="${ECS_DESIRED_COUNT:-1}"
-          aws ecs update-service \
-            --cluster "${ECS_CLUSTER}" \
-            --service "${ECS_SERVICE}" \
-            --desired-count "${ECS_DESIRED_COUNT}" \
-            --deployment-configuration "deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100"
-
       - name: Deploy task definition to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
@@ -186,7 +173,6 @@ jobs:
           service: ${{ vars.ECS_SERVICE }}
           cluster: ${{ vars.ECS_CLUSTER }}
           wait-for-service-stability: true
-          force-new-deployment: true
 
       - name: Deployment summary
         run: |

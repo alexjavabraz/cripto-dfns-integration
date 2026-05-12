@@ -578,13 +578,12 @@ Configure these in **GitHub Environments** (`staging` and `production`):
 | `CONTAINER_PORT` | Optional container port (default: `3000`) |
 | `ECS_TASK_CPU` | Optional task CPU units (default: `512`) |
 | `ECS_TASK_MEMORY` | Optional task memory in MiB (default: `1024`) |
-| `ECS_DESIRED_COUNT` | Optional desired task count (default: `1`) |
 
 ### Reliability recommendations
 
 - Set `production` environment with required reviewers (manual approval gate)
 - Keep ECS service deployment circuit breaker enabled with rollback
-- Keep service desired count `>= 1`
+- Keep ECS service desired count `>= 1`
 - Use ALB/NLB health checks against `/health` when exposed
 
 ## Development
