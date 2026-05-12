@@ -579,6 +579,69 @@ Configure these in **GitHub Environments** (`staging` and `production`):
 | `ECS_TASK_CPU` | Optional (defaults to `512` CPU units when unset) |
 | `ECS_TASK_MEMORY` | Optional (defaults to `1024` MiB when unset) |
 
+### How to configure AWS account access from GitHub (OIDC)
+
+1. **Create IAM OIDC provider** (once per AWS account):
+   - Provider URL: `https://token.actions.githubusercontent.com`
+   - Audience: `sts.amazonaws.com`
+
+2. **Create IAM role for GitHub Actions** (example: `github-actions-ecs-deploy`) with trust policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<AWS_ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:alexjavabraz/cripto-dfns-integration:environment:staging",
+            "repo:alexjavabraz/cripto-dfns-integration:environment:production"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+3. **Attach permissions policy** to this role (least privilege):
+   - ECR push/pull (`ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`, `ecr:InitiateLayerUpload`, `ecr:UploadLayerPart`, `ecr:CompleteLayerUpload`, `ecr:PutImage`, etc.)
+   - ECS deploy (`ecs:RegisterTaskDefinition`, `ecs:DescribeServices`, `ecs:DescribeTaskDefinition`, `ecs:UpdateService`)
+   - IAM pass role (`iam:PassRole`) for `ECS_EXECUTION_ROLE_ARN` and `ECS_TASK_ROLE_ARN`
+   - CloudWatch logs read helpers if needed (`logs:DescribeLogGroups`)
+
+4. **Create GitHub Environments**:
+   - Repository → **Settings** → **Environments**
+   - Create `staging` and `production`
+   - For `production`, add required reviewers (manual approval)
+
+5. **Add GitHub Environment variables**:
+   - Environment → **Variables** → **New variable**
+   - Add all entries from table above (`AWS_ROLE_ARN`, `AWS_REGION`, `ECR_REPOSITORY`, etc.)
+   - `AWS_ROLE_ARN` must be the role created in step 2
+
+6. **Store sensitive values in AWS Secrets Manager or SSM Parameter Store**:
+   - Create one secret/parameter per sensitive value (DFNS, RabbitMQ, Sentry)
+   - Put their ARNs in GitHub environment variables:
+     - `SECRET_ARN_DFNS_AUTH_TOKEN`
+     - `SECRET_ARN_DFNS_CRED_ID`
+     - `SECRET_ARN_DFNS_PRIVATE_KEY`
+     - `SECRET_ARN_RABBITMQ_URL`
+     - `SECRET_ARN_SENTRY_DSN`
+
+7. **Run deployment**:
+   - `push` to `main` deploys `staging`
+   - Manual: Actions → **Deploy to ECS** → **Run workflow** → choose `staging` or `production`
+
 ### Reliability recommendations
 
 - Set `production` environment with required reviewers (manual approval gate)
