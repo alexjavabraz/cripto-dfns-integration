@@ -84,7 +84,7 @@ jobs:
           )
 
           for key in "${required[@]}"; do
-            eval "value=\${$key}"
+            value="${!key:-}"
             if [ -z "$value" ]; then
               echo "Missing required GitHub environment variable: $key"
               exit 1
@@ -135,28 +135,31 @@ jobs:
           ECS_TASK_MEMORY: ${{ vars.ECS_TASK_MEMORY }}
         run: |
           set -eu
+          escape_sed() {
+            printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'
+          }
+
           CONTAINER_PORT="${CONTAINER_PORT:-3000}"
           ECS_TASK_CPU="${ECS_TASK_CPU:-512}"
           ECS_TASK_MEMORY="${ECS_TASK_MEMORY:-1024}"
 
           cp .github/ecs/task-definition.template.json task-definition.json
 
-          sed -i "s|__TASK_FAMILY__|${ECS_TASK_FAMILY}-${DEPLOY_ENV}|g" task-definition.json
-          sed -i "s|__TASK_ROLE_ARN__|${ECS_TASK_ROLE_ARN}|g" task-definition.json
-          sed -i "s|__EXECUTION_ROLE_ARN__|${ECS_EXECUTION_ROLE_ARN}|g" task-definition.json
-          sed -i "s|__AWS_REGION__|${AWS_REGION}|g" task-definition.json
-          sed -i "s|__LOG_GROUP__|${ECS_LOG_GROUP}|g" task-definition.json
-          sed -i "s|__CONTAINER_PORT__|${CONTAINER_PORT}|g" task-definition.json
-          sed -i "s|__TASK_CPU__|${ECS_TASK_CPU}|g" task-definition.json
-          sed -i "s|__TASK_MEMORY__|${ECS_TASK_MEMORY}|g" task-definition.json
-          sed -i "s|__DFNS_API_URL__|${DFNS_API_URL}|g" task-definition.json
-          sed -i "s|__DFNS_ORG_ID__|${DFNS_ORG_ID}|g" task-definition.json
-          sed -i "s|__SECRET_DFNS_AUTH_TOKEN__|${SECRET_ARN_DFNS_AUTH_TOKEN}|g" task-definition.json
-          sed -i "s|__SECRET_DFNS_CRED_ID__|${SECRET_ARN_DFNS_CRED_ID}|g" task-definition.json
-          sed -i "s|__SECRET_DFNS_PRIVATE_KEY__|${SECRET_ARN_DFNS_PRIVATE_KEY}|g" task-definition.json
-          sed -i "s|__SECRET_RABBITMQ_URL__|${SECRET_ARN_RABBITMQ_URL}|g" task-definition.json
-          sed -i "s|__SECRET_SENTRY_DSN__|${SECRET_ARN_SENTRY_DSN}|g" task-definition.json
-          sed -i "s|__IMAGE_URI__|${{ steps.image.outputs.image_uri }}|g" task-definition.json
+          sed -i "s|__TASK_FAMILY__|$(escape_sed "${ECS_TASK_FAMILY}-${DEPLOY_ENV}")|g" task-definition.json
+          sed -i "s|__TASK_ROLE_ARN__|$(escape_sed "${ECS_TASK_ROLE_ARN}")|g" task-definition.json
+          sed -i "s|__EXECUTION_ROLE_ARN__|$(escape_sed "${ECS_EXECUTION_ROLE_ARN}")|g" task-definition.json
+          sed -i "s|__AWS_REGION__|$(escape_sed "${AWS_REGION}")|g" task-definition.json
+          sed -i "s|__LOG_GROUP__|$(escape_sed "${ECS_LOG_GROUP}")|g" task-definition.json
+          sed -i "s|__CONTAINER_PORT__|$(escape_sed "${CONTAINER_PORT}")|g" task-definition.json
+          sed -i "s|__TASK_CPU__|$(escape_sed "${ECS_TASK_CPU}")|g" task-definition.json
+          sed -i "s|__TASK_MEMORY__|$(escape_sed "${ECS_TASK_MEMORY}")|g" task-definition.json
+          sed -i "s|__DFNS_API_URL__|$(escape_sed "${DFNS_API_URL}")|g" task-definition.json
+          sed -i "s|__DFNS_ORG_ID__|$(escape_sed "${DFNS_ORG_ID}")|g" task-definition.json
+          sed -i "s|__SECRET_DFNS_AUTH_TOKEN__|$(escape_sed "${SECRET_ARN_DFNS_AUTH_TOKEN}")|g" task-definition.json
+          sed -i "s|__SECRET_DFNS_CRED_ID__|$(escape_sed "${SECRET_ARN_DFNS_CRED_ID}")|g" task-definition.json
+          sed -i "s|__SECRET_DFNS_PRIVATE_KEY__|$(escape_sed "${SECRET_ARN_DFNS_PRIVATE_KEY}")|g" task-definition.json
+          sed -i "s|__SECRET_RABBITMQ_URL__|$(escape_sed "${SECRET_ARN_RABBITMQ_URL}")|g" task-definition.json
+          sed -i "s|__SECRET_SENTRY_DSN__|$(escape_sed "${SECRET_ARN_SENTRY_DSN}")|g" task-definition.json
 
       - name: Inject image into task definition
         id: render-task-def
