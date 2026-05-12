@@ -576,8 +576,8 @@ Configure these in **GitHub Environments** (`staging` and `production`):
 | `SECRET_ARN_RABBITMQ_URL` | Secrets Manager/SSM ARN for `RABBITMQ_URL` |
 | `SECRET_ARN_SENTRY_DSN` | Secrets Manager/SSM ARN for `SENTRY_DSN` |
 | `CONTAINER_PORT` | Optional (defaults to `3000` when unset) |
-| `ECS_TASK_CPU` | Optional (defaults to `512` when unset) |
-| `ECS_TASK_MEMORY` | Optional (defaults to `1024` when unset) |
+| `ECS_TASK_CPU` | Optional (defaults to `512` CPU units when unset) |
+| `ECS_TASK_MEMORY` | Optional (defaults to `1024` MiB when unset) |
 
 ### Reliability recommendations
 
