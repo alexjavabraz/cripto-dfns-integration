@@ -1,7 +1,7 @@
 import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
-import { captureError } from '../../config/sentry.js'
+import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
 import { balanceRequestSchema, type BalanceResponse, type BalanceErrorResponse } from '../../schemas/balance.schema.js'
 import { getERC20Balance } from '../token/balance.js'
 
@@ -31,6 +31,12 @@ export async function startBalanceConsumer(channel: amqplib.Channel): Promise<vo
     // Parse JSON
     try {
       rawPayload = JSON.parse(msg.content.toString('utf-8')) as unknown
+      Sentry.addBreadcrumb({
+        category: 'rabbitmq.receive',
+        message: `Message received from queue ${env.QUEUE_GET_BALANCE}`,
+        data: rawPayload as Record<string, unknown>,
+        level: 'info',
+      })
     } catch (err) {
       logger.error('Failed to parse balance request message', {
         error: err instanceof Error ? err.message : String(err),
@@ -102,6 +108,17 @@ export async function startBalanceConsumer(channel: amqplib.Channel): Promise<vo
       }
 
       publishResponse(channel, response)
+      captureMessage('RabbitMQ message processed: balance query succeeded', 'info', {
+        queue: env.QUEUE_GET_BALANCE,
+        idempotencyKey,
+        correlationId: metadata.correlationId,
+        network: network.name,
+        tokenAddress: token.address,
+        walletAddress: wallet.address,
+        balance: balance.formatted,
+        symbol: balance.symbol,
+        durationMs: Date.now() - startMs,
+      })
       logger.info('Balance query succeeded', {
         idempotencyKey,
         correlationId: metadata.correlationId,

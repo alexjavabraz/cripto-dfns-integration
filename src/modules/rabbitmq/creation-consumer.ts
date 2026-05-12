@@ -1,7 +1,7 @@
 import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
-import { captureError } from '../../config/sentry.js'
+import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
 import {
   creationRequestMessageSchema,
   type CreationRequestMessage,
@@ -91,6 +91,12 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
     let rawPayload: unknown
     try {
       rawPayload = parseMessage(msg)
+      Sentry.addBreadcrumb({
+        category: 'rabbitmq.receive',
+        message: `Message received from queue ${env.RABBITMQ_CREATION_QUEUE}`,
+        data: rawPayload as Record<string, unknown>,
+        level: 'info',
+      })
     } catch (parseError) {
       logger.error('Failed to parse creation request message', {
         error: parseError instanceof Error ? parseError.message : String(parseError),
@@ -204,6 +210,16 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
       }
 
       publishSuccess(channel, successEvent)
+      captureMessage('RabbitMQ message processed: token creation succeeded', 'info', {
+        queue: env.RABBITMQ_CREATION_QUEUE,
+        idempotencyKey,
+        correlationId: metadata.correlationId,
+        network: network.name,
+        standard: token.standard,
+        contractAddress: result.contractAddress,
+        txHash: result.transactionHash,
+        durationMs: Date.now() - startMs,
+      })
       logger.info('Creation request processed successfully', {
         idempotencyKey,
         correlationId: metadata.correlationId,

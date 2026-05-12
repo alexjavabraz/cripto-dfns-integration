@@ -2,7 +2,7 @@ import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
 import { processTokenMessage } from '../token/processor.js'
-import { captureError } from '../../config/sentry.js'
+import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
 
 const MAX_RETRY_COUNT = 3
 const RETRY_DELAY_MS = 2000
@@ -39,7 +39,24 @@ export async function startConsumer(channel: amqplib.Channel): Promise<void> {
 
     try {
       const payload = parseMessage(msg)
+
+      Sentry.addBreadcrumb({
+        category: 'rabbitmq.receive',
+        message: `Message received from queue ${env.RABBITMQ_QUEUE}`,
+        data: payload as Record<string, unknown>,
+        level: 'info',
+      })
+
       const result = await processTokenMessage(payload)
+
+      captureMessage('RabbitMQ message processed: token deployed', 'info', {
+        queue: env.RABBITMQ_QUEUE,
+        contractAddress: result.contractAddress,
+        txHash: result.transactionHash,
+        type: result.type,
+        network: result.network,
+        retryCount,
+      })
 
       logger.info('Message processed successfully', {
         contractAddress: result.contractAddress,

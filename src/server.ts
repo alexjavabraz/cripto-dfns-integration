@@ -21,10 +21,21 @@ async function main(): Promise<void> {
   logger.info(`HTTP server listening on port ${env.PORT}`)
 
   // --- Connect to RabbitMQ and start consuming ---
-  const channel = await connect()
+  let channel
+  try {
+    channel = await connect()
+  } catch (error) {
+    captureError(error, { context: 'startup:rabbitmq-connect', url: env.RABBITMQ_URL.replace(/:[^:@]+@/, ':***@') })
+    throw error
+  }
 
   // Creation consumer must start before smoke test so it can process the test message
-  await startCreationConsumer(channel)
+  try {
+    await startCreationConsumer(channel)
+  } catch (error) {
+    captureError(error, { context: 'startup:creation-consumer', queue: env.RABBITMQ_CREATION_QUEUE })
+    throw error
+  }
 
   // --- Optional smoke test ---
   if (env.SMOKE_TEST) {
@@ -35,14 +46,31 @@ async function main(): Promise<void> {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       logger.error('Smoke test failed — aborting startup', { error: msg })
-      captureError(error, { context: 'smoke-test' })
+      captureError(error, { context: 'startup:smoke-test' })
       process.exit(1)
     }
   }
 
-  await startConsumer(channel)
-  await startBalanceConsumer(channel)
-  await startTokenEventConsumer(channel)
+  try {
+    await startConsumer(channel)
+  } catch (error) {
+    captureError(error, { context: 'startup:consumer', queue: env.RABBITMQ_QUEUE })
+    throw error
+  }
+
+  try {
+    await startBalanceConsumer(channel)
+  } catch (error) {
+    captureError(error, { context: 'startup:balance-consumer', queue: env.QUEUE_GET_BALANCE })
+    throw error
+  }
+
+  try {
+    await startTokenEventConsumer(channel)
+  } catch (error) {
+    captureError(error, { context: 'startup:token-event-consumer', exchange: env.TOKEN_EVENT })
+    throw error
+  }
 
   // --- Graceful shutdown ---
   const shutdown = async (signal: string): Promise<void> => {

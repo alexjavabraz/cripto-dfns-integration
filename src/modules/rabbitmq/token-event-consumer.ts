@@ -1,7 +1,7 @@
 import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
-import { captureError } from '../../config/sentry.js'
+import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
 import { tokenEventSchema, type TokenEventResponse, type TokenEventErrorResponse } from '../../schemas/token-event.schema.js'
 import { executeTokenOperation } from '../token/token-ops.js'
 import { getNetworkConfig } from '../token/networks.js'
@@ -40,6 +40,12 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
     // Parse JSON
     try {
       rawPayload = JSON.parse(msg.content.toString('utf-8')) as unknown
+      Sentry.addBreadcrumb({
+        category: 'rabbitmq.receive',
+        message: `Message received from queue ${TOKEN_EVENT_QUEUE}`,
+        data: rawPayload as Record<string, unknown>,
+        level: 'info',
+      })
     } catch (err) {
       logger.error('Failed to parse token event message', {
         error: err instanceof Error ? err.message : String(err),
@@ -111,6 +117,16 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
       }
 
       publishResponse(channel, response)
+      captureMessage('RabbitMQ message processed: token event succeeded', 'info', {
+        queue: TOKEN_EVENT_QUEUE,
+        idempotencyKey,
+        correlationId: metadata.correlationId,
+        network: network.name,
+        tokenAddress: token.address,
+        operation: operation.type,
+        txHash: result.txHash,
+        durationMs: Date.now() - startMs,
+      })
       logger.info('Token event executed successfully', {
         idempotencyKey,
         correlationId: metadata.correlationId,

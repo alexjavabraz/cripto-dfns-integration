@@ -7,7 +7,11 @@ export function initSentry(): void {
     environment: env.NODE_ENV,
     tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
     sendDefaultPii: true,
-    integrations: [Sentry.httpIntegration()],
+    integrations: [
+      Sentry.httpIntegration(),
+      Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+    ],
+    enableLogs: true,
   })
 }
 
