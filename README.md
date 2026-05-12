@@ -575,9 +575,9 @@ Configure these in **GitHub Environments** (`staging` and `production`):
 | `SECRET_ARN_DFNS_PRIVATE_KEY` | Secrets Manager/SSM ARN for `DFNS_PRIVATE_KEY` |
 | `SECRET_ARN_RABBITMQ_URL` | Secrets Manager/SSM ARN for `RABBITMQ_URL` |
 | `SECRET_ARN_SENTRY_DSN` | Secrets Manager/SSM ARN for `SENTRY_DSN` |
-| `CONTAINER_PORT` | Optional container port (default: `3000`) |
-| `ECS_TASK_CPU` | Optional task CPU units (default: `512`) |
-| `ECS_TASK_MEMORY` | Optional task memory in MiB (default: `1024`) |
+| `CONTAINER_PORT` | Optional (defaults to `3000` when unset) |
+| `ECS_TASK_CPU` | Optional (defaults to `512` when unset) |
+| `ECS_TASK_MEMORY` | Optional (defaults to `1024` when unset) |
 
 ### Reliability recommendations
 

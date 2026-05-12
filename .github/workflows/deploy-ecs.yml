@@ -143,29 +143,38 @@ jobs:
           import os
           from pathlib import Path
 
+          def required_env(name: str) -> str:
+              value = os.environ.get(name)
+              if not value:
+                  raise ValueError(f"Missing required environment variable: {name}")
+              return value
+
+          def normalized_int_env(name: str) -> str:
+              return str(int(required_env(name)))
+
           template_path = Path(".github/ecs/task-definition.template.json")
           output_path = Path("task-definition.json")
 
           content = template_path.read_text(encoding="utf-8")
-          container_port = str(int(os.environ["CONTAINER_PORT"]))
-          task_cpu = str(int(os.environ["ECS_TASK_CPU"]))
-          task_memory = str(int(os.environ["ECS_TASK_MEMORY"]))
+          container_port = normalized_int_env("CONTAINER_PORT")
+          task_cpu = normalized_int_env("ECS_TASK_CPU")
+          task_memory = normalized_int_env("ECS_TASK_MEMORY")
           replacements = {
-              "__TASK_FAMILY__": f"{os.environ['ECS_TASK_FAMILY']}-{os.environ['DEPLOY_ENV']}",
-              "__TASK_ROLE_ARN__": os.environ["ECS_TASK_ROLE_ARN"],
-              "__EXECUTION_ROLE_ARN__": os.environ["ECS_EXECUTION_ROLE_ARN"],
-              "__AWS_REGION__": os.environ["AWS_REGION"],
-              "__LOG_GROUP__": os.environ["ECS_LOG_GROUP"],
+              "__TASK_FAMILY__": f"{required_env('ECS_TASK_FAMILY')}-{required_env('DEPLOY_ENV')}",
+              "__TASK_ROLE_ARN__": required_env("ECS_TASK_ROLE_ARN"),
+              "__EXECUTION_ROLE_ARN__": required_env("ECS_EXECUTION_ROLE_ARN"),
+              "__AWS_REGION__": required_env("AWS_REGION"),
+              "__LOG_GROUP__": required_env("ECS_LOG_GROUP"),
               "__CONTAINER_PORT__": container_port,
               "__TASK_CPU__": task_cpu,
               "__TASK_MEMORY__": task_memory,
-              "__DFNS_API_URL__": os.environ["DFNS_API_URL"],
-              "__DFNS_ORG_ID__": os.environ["DFNS_ORG_ID"],
-              "__SECRET_DFNS_AUTH_TOKEN__": os.environ["SECRET_ARN_DFNS_AUTH_TOKEN"],
-              "__SECRET_DFNS_CRED_ID__": os.environ["SECRET_ARN_DFNS_CRED_ID"],
-              "__SECRET_DFNS_PRIVATE_KEY__": os.environ["SECRET_ARN_DFNS_PRIVATE_KEY"],
-              "__SECRET_RABBITMQ_URL__": os.environ["SECRET_ARN_RABBITMQ_URL"],
-              "__SECRET_SENTRY_DSN__": os.environ["SECRET_ARN_SENTRY_DSN"],
+              "__DFNS_API_URL__": required_env("DFNS_API_URL"),
+              "__DFNS_ORG_ID__": required_env("DFNS_ORG_ID"),
+              "__SECRET_DFNS_AUTH_TOKEN__": required_env("SECRET_ARN_DFNS_AUTH_TOKEN"),
+              "__SECRET_DFNS_CRED_ID__": required_env("SECRET_ARN_DFNS_CRED_ID"),
+              "__SECRET_DFNS_PRIVATE_KEY__": required_env("SECRET_ARN_DFNS_PRIVATE_KEY"),
+              "__SECRET_RABBITMQ_URL__": required_env("SECRET_ARN_RABBITMQ_URL"),
+              "__SECRET_SENTRY_DSN__": required_env("SECRET_ARN_SENTRY_DSN"),
           }
 
           for token, value in replacements.items():
