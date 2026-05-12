@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   try {
     await startCreationConsumer(channel)
   } catch (error) {
-    captureError(error, { context: 'startup:creation-consumer', queue: env.RABBITMQ_CREATION_QUEUE })
+    captureError(error, { context: 'startup:creation-consumer', queue: env.QUEUE_REQUEST_TOKEN_CREATION })
     throw error
   }
 

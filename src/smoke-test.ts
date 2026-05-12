@@ -45,7 +45,7 @@ export async function runSmokeTest(channel: amqplib.Channel): Promise<void> {
 
   // Bind exclusive auto-delete queues to both result exchanges
   const successQ = await channel.assertQueue('', { exclusive: true, autoDelete: true })
-  await channel.bindQueue(successQ.queue, env.RABBITMQ_CREATED_EXCHANGE, '#')
+  await channel.bindQueue(successQ.queue, env.EXCHANGE_RESPONSE_TOKEN_CREATED, '#')
 
   const errorQ = await channel.assertQueue('', { exclusive: true, autoDelete: true })
   await channel.bindQueue(errorQ.queue, env.RABBITMQ_ERROR_EXCHANGE, '#')
@@ -53,7 +53,7 @@ export async function runSmokeTest(channel: amqplib.Channel): Promise<void> {
   logger.info('Smoke test: publishing test message', { idempotencyKey, correlationId })
 
   channel.sendToQueue(
-    env.RABBITMQ_CREATION_QUEUE,
+    env.QUEUE_REQUEST_TOKEN_CREATION,
     Buffer.from(JSON.stringify(message)),
     { persistent: true, contentType: 'application/json' },
   )
