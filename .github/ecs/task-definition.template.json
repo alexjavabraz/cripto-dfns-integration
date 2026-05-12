@@ -1,0 +1,54 @@
+{
+  "family": "__TASK_FAMILY__",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "__TASK_CPU__",
+  "memory": "__TASK_MEMORY__",
+  "executionRoleArn": "__EXECUTION_ROLE_ARN__",
+  "taskRoleArn": "__TASK_ROLE_ARN__",
+  "containerDefinitions": [
+    {
+      "name": "dfns-integration",
+      "image": "public.ecr.aws/docker/library/node:24-alpine",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": __CONTAINER_PORT__,
+          "protocol": "tcp"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:__CONTAINER_PORT__/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "__CONTAINER_PORT__" },
+        { "name": "LOG_LEVEL", "value": "info" },
+        { "name": "DFNS_API_URL", "value": "__DFNS_API_URL__" },
+        { "name": "DFNS_ORG_ID", "value": "__DFNS_ORG_ID__" }
+      ],
+      "secrets": [
+        { "name": "DFNS_AUTH_TOKEN", "valueFrom": "__SECRET_DFNS_AUTH_TOKEN__" },
+        { "name": "DFNS_CRED_ID", "valueFrom": "__SECRET_DFNS_CRED_ID__" },
+        { "name": "DFNS_PRIVATE_KEY", "valueFrom": "__SECRET_DFNS_PRIVATE_KEY__" },
+        { "name": "RABBITMQ_URL", "valueFrom": "__SECRET_RABBITMQ_URL__" },
+        { "name": "SENTRY_DSN", "valueFrom": "__SECRET_SENTRY_DSN__" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "__LOG_GROUP__",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
