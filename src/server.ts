@@ -8,6 +8,7 @@ import { startCreationConsumer } from './modules/rabbitmq/creation-consumer.js'
 import { runSmokeTest } from './smoke-test.js'
 import { startBalanceConsumer } from './modules/rabbitmq/balance-consumer.js'
 import { startTokenEventConsumer } from './modules/rabbitmq/token-event-consumer.js'
+import { startTransferConsumer } from './modules/rabbitmq/transfer-consumer.js'
 import { loadWalletRegistry } from './modules/dfns/wallet-registry.js'
 
 // Initialize Sentry first — before anything else can throw
@@ -78,6 +79,13 @@ async function main(): Promise<void> {
     await startTokenEventConsumer(channel)
   } catch (error) {
     captureError(error, { context: 'startup:token-event-consumer', exchange: env.TOKEN_EVENT })
+    throw error
+  }
+
+  try {
+    await startTransferConsumer(channel)
+  } catch (error) {
+    captureError(error, { context: 'startup:transfer-consumer', exchange: env.EXCHANGE_TOKEN_TRANSFER_REQUEST })
     throw error
   }
 

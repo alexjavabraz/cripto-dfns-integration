@@ -45,6 +45,11 @@ const envSchema = z.object({
   QUEUE_TOKEN_EVENT: z.string().default('token_event.queue'),
   EXCHANGE_TOKEN_EVENT_RESPONSE: z.string().default('token_event_response'),
 
+  // Token transfer
+  EXCHANGE_TOKEN_TRANSFER_REQUEST: z.string().default('bff_publish_token_transfer_request'),
+  QUEUE_TOKEN_TRANSFER_REQUEST: z.string().default('dfns_listen_token_transfer_request'),
+  EXCHANGE_TOKEN_TRANSFER_RESPONSE: z.string().default('dfns_publish_token_transfer_response'),
+
   // Sentry
   SENTRY_DSN: z.string().url(),
 

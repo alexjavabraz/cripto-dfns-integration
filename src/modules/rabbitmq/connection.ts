@@ -95,6 +95,12 @@ export async function connect(): Promise<amqplib.Channel> {
   await _channel.bindQueue(env.QUEUE_TOKEN_EVENT, env.TOKEN_EVENT, '#')
   await _channel.assertExchange(env.EXCHANGE_TOKEN_EVENT_RESPONSE, 'topic', { durable: true })
 
+  // ── Token transfer request queue + response exchange ──────────────────────────
+  await _channel.assertExchange(env.EXCHANGE_TOKEN_TRANSFER_REQUEST, 'topic', { durable: true })
+  _channel = await assertQueueSafe(_model, _channel, env.QUEUE_TOKEN_TRANSFER_REQUEST, { durable: true })
+  await _channel.bindQueue(env.QUEUE_TOKEN_TRANSFER_REQUEST, env.EXCHANGE_TOKEN_TRANSFER_REQUEST, '#')
+  await _channel.assertExchange(env.EXCHANGE_TOKEN_TRANSFER_RESPONSE, 'topic', { durable: true })
+
   // ── Process one message at a time ─────────────────────────────────────────────
   await _channel.prefetch(env.RABBITMQ_PREFETCH)
 
