@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { getProvider } from './networks.js'
-import type { Network } from '../../schemas/token.schema.js'
+import type { Network } from '../../schemas/token.schema.js' // Network is now a string alias
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
