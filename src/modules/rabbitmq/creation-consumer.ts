@@ -80,9 +80,9 @@ function mapToTokenMessage(msg: CreationRequestMessage): unknown {
 }
 
 export async function startCreationConsumer(channel: amqplib.Channel): Promise<void> {
-  logger.info('Starting creation request consumer', { queue: env.RABBITMQ_CREATION_QUEUE })
+  logger.info('Starting creation request consumer', { queue: env.QUEUE_REQUEST_TOKEN_CREATION })
 
-  await channel.consume(env.RABBITMQ_CREATION_QUEUE, async (msg) => {
+  await channel.consume(env.QUEUE_REQUEST_TOKEN_CREATION, async (msg) => {
     if (!msg) return
 
     const startMs = Date.now()
@@ -93,7 +93,7 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
       rawPayload = parseMessage(msg)
       Sentry.addBreadcrumb({
         category: 'rabbitmq.receive',
-        message: `Message received from queue ${env.RABBITMQ_CREATION_QUEUE}`,
+        message: `Message received from queue ${env.QUEUE_REQUEST_TOKEN_CREATION}`,
         data: rawPayload as Record<string, unknown>,
         level: 'info',
       })
@@ -211,7 +211,7 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
 
       publishSuccess(channel, successEvent)
       captureMessage('RabbitMQ message processed: token creation succeeded', 'info', {
-        queue: env.RABBITMQ_CREATION_QUEUE,
+        queue: env.QUEUE_REQUEST_TOKEN_CREATION,
         idempotencyKey,
         correlationId: metadata.correlationId,
         network: network.name,

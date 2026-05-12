@@ -74,13 +74,15 @@ export async function connect(): Promise<amqplib.Channel> {
   _channel = await assertQueueSafe(_model, _channel, deadQueueName, { durable: true })
   await _channel.bindQueue(deadQueueName, dlxName, env.RABBITMQ_QUEUE)
 
-  // ── Token creation request queue ─────────────────────────────────────────────
-  _channel = await assertQueueSafe(_model, _channel, env.RABBITMQ_CREATION_QUEUE, {
+  // ── Token creation request: assert exchange + queue + binding ────────────────
+  await _channel.assertExchange(env.EXCHANGE_REQUEST_TOKEN_CREATION, 'topic', { durable: true })
+  _channel = await assertQueueSafe(_model, _channel, env.QUEUE_REQUEST_TOKEN_CREATION, {
     durable: true,
   })
+  await _channel.bindQueue(env.QUEUE_REQUEST_TOKEN_CREATION, env.EXCHANGE_REQUEST_TOKEN_CREATION, '#')
 
   // ── Output exchanges ──────────────────────────────────────────────────────────
-  await _channel.assertExchange(env.RABBITMQ_CREATED_EXCHANGE, 'topic', { durable: true })
+  await _channel.assertExchange(env.EXCHANGE_RESPONSE_TOKEN_CREATED, 'topic', { durable: true })
   await _channel.assertExchange(env.RABBITMQ_ERROR_EXCHANGE, 'topic', { durable: true })
 
   // ── Balance query queue + response exchange ───────────────────────────────────
@@ -98,7 +100,8 @@ export async function connect(): Promise<amqplib.Channel> {
 
   logger.info('RabbitMQ connected and queues/exchanges asserted', {
     queue: env.RABBITMQ_QUEUE,
-    creationQueue: env.RABBITMQ_CREATION_QUEUE,
+    listenQueue: env.QUEUE_REQUEST_TOKEN_CREATION,
+    publishExchange: env.EXCHANGE_RESPONSE_TOKEN_CREATED,
   })
 
   _model.on('close', () => {

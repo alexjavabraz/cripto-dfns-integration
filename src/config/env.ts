@@ -27,8 +27,12 @@ const envSchema = z.object({
   RABBITMQ_URL: z.string().url(),
   RABBITMQ_QUEUE: z.string().default('token.create'),
   RABBITMQ_PREFETCH: z.coerce.number().int().min(1).default(1),
-  RABBITMQ_CREATION_QUEUE: z.string().default('token_creation_request'),
-  RABBITMQ_CREATED_EXCHANGE: z.string().default('token_created'),
+  // Exchange where BFF publishes (dfns-integration binds its listen queue here)
+  EXCHANGE_REQUEST_TOKEN_CREATION: z.string().default('bff_publish_token_creation_request'),
+  // Queue where dfns-integration listens for token creation requests
+  QUEUE_REQUEST_TOKEN_CREATION: z.string().default('dfns_listen_token_creation_request'),
+  // Exchange where dfns-integration publishes results (BFF listens here)
+  EXCHANGE_RESPONSE_TOKEN_CREATED: z.string().default('dfns_publish_token_creation_response'),
   RABBITMQ_ERROR_EXCHANGE: z.string().default('token_creation_error'),
 
   // Balance query

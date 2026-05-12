@@ -6,12 +6,12 @@ import type { CreationSuccessEvent, CreationErrorEvent } from '../../schemas/cre
 export function publishSuccess(channel: amqplib.Channel, event: CreationSuccessEvent): void {
   Sentry.addBreadcrumb({
     category: 'rabbitmq.publish',
-    message: `Published token.creation.succeeded → ${env.RABBITMQ_CREATED_EXCHANGE}`,
+    message: `Published token.creation.succeeded → ${env.EXCHANGE_RESPONSE_TOKEN_CREATED}`,
     data: event as unknown as Record<string, unknown>,
     level: 'info',
   })
   captureMessage('RabbitMQ message published: token.creation.succeeded', 'info', {
-    exchange: env.RABBITMQ_CREATED_EXCHANGE,
+    exchange: env.EXCHANGE_RESPONSE_TOKEN_CREATED,
     routingKey: 'token.creation.succeeded',
     idempotencyKey: event.idempotencyKey,
     network: event.network.name,
@@ -19,7 +19,7 @@ export function publishSuccess(channel: amqplib.Channel, event: CreationSuccessE
     deployment: event.deployment,
   })
   channel.publish(
-    env.RABBITMQ_CREATED_EXCHANGE,
+    env.EXCHANGE_RESPONSE_TOKEN_CREATED,
     'token.creation.succeeded',
     Buffer.from(JSON.stringify(event)),
     { persistent: true },
