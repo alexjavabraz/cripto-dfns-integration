@@ -46,6 +46,8 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
       })
     } catch (err) {
       logger.error('Failed to parse token event message', {
+        queue: env.QUEUE_TOKEN_EVENT,
+        rawContent: msg.content.toString('utf-8').slice(0, 500),
         error: err instanceof Error ? err.message : String(err),
       })
       captureError(err, { context: 'token-event-consumer:parse' })
@@ -58,7 +60,12 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
     if (!parsed.success) {
       const issues = parsed.error.flatten()
       const idempotencyKey = (rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string ?? 'unknown'
-      logger.error('Invalid token event message', { issues, idempotencyKey })
+      logger.error('Invalid token event message', {
+        queue: env.QUEUE_TOKEN_EVENT,
+        rawPayload,
+        issues,
+        idempotencyKey,
+      })
       const validationError = new Error(`Invalid token event: ${JSON.stringify(issues.fieldErrors)}`)
       captureError(validationError, { context: 'token-event-consumer:validation', idempotencyKey, issues })
 

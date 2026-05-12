@@ -100,6 +100,8 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
       })
     } catch (parseError) {
       logger.error('Failed to parse creation request message', {
+        queue: env.QUEUE_REQUEST_TOKEN_CREATION,
+        rawContent: msg.content.toString('utf-8').slice(0, 500),
         error: parseError instanceof Error ? parseError.message : String(parseError),
       })
       captureError(parseError, { context: 'creation-consumer:parse' })
@@ -111,7 +113,11 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
     const parsed = creationRequestMessageSchema.safeParse(rawPayload)
     if (!parsed.success) {
       const issues = parsed.error.flatten()
-      logger.warn('Invalid creation request message', { issues })
+      logger.warn('Invalid creation request message', {
+        queue: env.QUEUE_REQUEST_TOKEN_CREATION,
+        rawPayload,
+        issues,
+      })
       captureError(new Error(`VALIDATION_ERROR: ${JSON.stringify(issues.fieldErrors)}`), {
         context: 'creation-consumer:validation',
         idempotencyKey: (rawPayload as Record<string, unknown>)?.['idempotencyKey'],

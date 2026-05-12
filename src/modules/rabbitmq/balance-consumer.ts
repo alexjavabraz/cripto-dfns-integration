@@ -39,6 +39,8 @@ export async function startBalanceConsumer(channel: amqplib.Channel): Promise<vo
       })
     } catch (err) {
       logger.error('Failed to parse balance request message', {
+        queue: env.QUEUE_GET_BALANCE,
+        rawContent: msg.content.toString('utf-8').slice(0, 500),
         error: err instanceof Error ? err.message : String(err),
       })
       captureError(err, { context: 'balance-consumer:parse' })
@@ -52,7 +54,12 @@ export async function startBalanceConsumer(channel: amqplib.Channel): Promise<vo
       const issues = parsed.error.flatten()
       const idempotencyKey = (rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string ?? 'unknown'
       const correlationId = (rawPayload as Record<string, unknown>)?.['metadata'] as Record<string, unknown> | undefined
-      logger.error('Invalid balance request message', { issues, idempotencyKey })
+      logger.error('Invalid balance request message', {
+        queue: env.QUEUE_GET_BALANCE,
+        rawPayload,
+        issues,
+        idempotencyKey,
+      })
       const validationError = new Error(`Invalid balance request: ${JSON.stringify(issues.fieldErrors)}`)
       captureError(validationError, { context: 'balance-consumer:validation', idempotencyKey, issues })
 
