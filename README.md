@@ -544,6 +544,49 @@ docker build -t dfns-integration .
 docker run --env-file .env -p 3000:3000 dfns-integration
 ```
 
+## CI/CD (GitHub Actions → AWS ECS Fargate)
+
+Deployment is done by `.github/workflows/deploy-ecs.yml`:
+
+- `push` to `main` deploys to `staging`
+- Manual `workflow_dispatch` can deploy to `staging` or `production`
+- AWS authentication uses GitHub OIDC (`aws-actions/configure-aws-credentials`)
+- Image is built and pushed to ECR, then ECS service is updated
+
+### Required GitHub Environment variables (staging / production)
+
+Configure these in **GitHub Environments** (`staging` and `production`):
+
+| Variable | Description |
+|---|---|
+| `AWS_ROLE_ARN` | IAM role assumed via OIDC |
+| `AWS_REGION` | AWS region (e.g. `us-east-1`) |
+| `ECR_REPOSITORY` | ECR repository name |
+| `ECS_CLUSTER` | ECS cluster name |
+| `ECS_SERVICE` | ECS service name |
+| `ECS_TASK_FAMILY` | ECS task definition family prefix |
+| `ECS_EXECUTION_ROLE_ARN` | ECS task execution role ARN |
+| `ECS_TASK_ROLE_ARN` | ECS task role ARN |
+| `ECS_LOG_GROUP` | CloudWatch logs group for container logs |
+| `DFNS_API_URL` | DFNS API URL (non-secret) |
+| `DFNS_ORG_ID` | DFNS organization ID (non-secret) |
+| `SECRET_ARN_DFNS_AUTH_TOKEN` | Secrets Manager/SSM ARN for `DFNS_AUTH_TOKEN` |
+| `SECRET_ARN_DFNS_CRED_ID` | Secrets Manager/SSM ARN for `DFNS_CRED_ID` |
+| `SECRET_ARN_DFNS_PRIVATE_KEY` | Secrets Manager/SSM ARN for `DFNS_PRIVATE_KEY` |
+| `SECRET_ARN_RABBITMQ_URL` | Secrets Manager/SSM ARN for `RABBITMQ_URL` |
+| `SECRET_ARN_SENTRY_DSN` | Secrets Manager/SSM ARN for `SENTRY_DSN` |
+| `CONTAINER_PORT` | Optional container port (default: `3000`) |
+| `ECS_TASK_CPU` | Optional task CPU units (default: `512`) |
+| `ECS_TASK_MEMORY` | Optional task memory in MiB (default: `1024`) |
+| `ECS_DESIRED_COUNT` | Optional desired task count (default: `1`) |
+
+### Reliability recommendations
+
+- Set `production` environment with required reviewers (manual approval gate)
+- Keep ECS service deployment circuit breaker enabled with rollback
+- Keep service desired count `>= 1`
+- Use ALB/NLB health checks against `/health` when exposed
+
 ## Development
 
 ```bash

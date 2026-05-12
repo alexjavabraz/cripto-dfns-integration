@@ -1,0 +1,196 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+      ref:
+        description: Branch or tag to deploy (default: main)
+        default: main
+
+concurrency:
+  group: deploy-ecs-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy — ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Resolve deployment target
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "deploy_env=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+            echo "deploy_ref=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_env=staging" >> "$GITHUB_OUTPUT"
+            echo "deploy_ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.target.outputs.deploy_ref }}
+
+      - name: Validate required GitHub environment variables
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+          ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+          ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
+          ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP }}
+          DFNS_API_URL: ${{ vars.DFNS_API_URL }}
+          DFNS_ORG_ID: ${{ vars.DFNS_ORG_ID }}
+          SECRET_ARN_DFNS_AUTH_TOKEN: ${{ vars.SECRET_ARN_DFNS_AUTH_TOKEN }}
+          SECRET_ARN_DFNS_CRED_ID: ${{ vars.SECRET_ARN_DFNS_CRED_ID }}
+          SECRET_ARN_DFNS_PRIVATE_KEY: ${{ vars.SECRET_ARN_DFNS_PRIVATE_KEY }}
+          SECRET_ARN_RABBITMQ_URL: ${{ vars.SECRET_ARN_RABBITMQ_URL }}
+          SECRET_ARN_SENTRY_DSN: ${{ vars.SECRET_ARN_SENTRY_DSN }}
+        run: |
+          set -eu
+          required=(
+            AWS_ROLE_ARN
+            AWS_REGION
+            ECR_REPOSITORY
+            ECS_CLUSTER
+            ECS_SERVICE
+            ECS_TASK_FAMILY
+            ECS_EXECUTION_ROLE_ARN
+            ECS_TASK_ROLE_ARN
+            ECS_LOG_GROUP
+            DFNS_API_URL
+            DFNS_ORG_ID
+            SECRET_ARN_DFNS_AUTH_TOKEN
+            SECRET_ARN_DFNS_CRED_ID
+            SECRET_ARN_DFNS_PRIVATE_KEY
+            SECRET_ARN_RABBITMQ_URL
+            SECRET_ARN_SENTRY_DSN
+          )
+
+          for key in "${required[@]}"; do
+            eval "value=\${$key}"
+            if [ -z "$value" ]; then
+              echo "Missing required GitHub environment variable: $key"
+              exit 1
+            fi
+          done
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        id: image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -eu
+          IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build -t "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Render ECS task definition template
+        id: task-def
+        env:
+          DEPLOY_ENV: ${{ steps.target.outputs.deploy_env }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
+          ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP }}
+          DFNS_API_URL: ${{ vars.DFNS_API_URL }}
+          DFNS_ORG_ID: ${{ vars.DFNS_ORG_ID }}
+          SECRET_ARN_DFNS_AUTH_TOKEN: ${{ vars.SECRET_ARN_DFNS_AUTH_TOKEN }}
+          SECRET_ARN_DFNS_CRED_ID: ${{ vars.SECRET_ARN_DFNS_CRED_ID }}
+          SECRET_ARN_DFNS_PRIVATE_KEY: ${{ vars.SECRET_ARN_DFNS_PRIVATE_KEY }}
+          SECRET_ARN_RABBITMQ_URL: ${{ vars.SECRET_ARN_RABBITMQ_URL }}
+          SECRET_ARN_SENTRY_DSN: ${{ vars.SECRET_ARN_SENTRY_DSN }}
+          CONTAINER_PORT: ${{ vars.CONTAINER_PORT }}
+          ECS_TASK_CPU: ${{ vars.ECS_TASK_CPU }}
+          ECS_TASK_MEMORY: ${{ vars.ECS_TASK_MEMORY }}
+        run: |
+          set -eu
+          CONTAINER_PORT="${CONTAINER_PORT:-3000}"
+          ECS_TASK_CPU="${ECS_TASK_CPU:-512}"
+          ECS_TASK_MEMORY="${ECS_TASK_MEMORY:-1024}"
+
+          cp .github/ecs/task-definition.template.json task-definition.json
+
+          sed -i "s|__TASK_FAMILY__|${ECS_TASK_FAMILY}-${DEPLOY_ENV}|g" task-definition.json
+          sed -i "s|__TASK_ROLE_ARN__|${ECS_TASK_ROLE_ARN}|g" task-definition.json
+          sed -i "s|__EXECUTION_ROLE_ARN__|${ECS_EXECUTION_ROLE_ARN}|g" task-definition.json
+          sed -i "s|__AWS_REGION__|${AWS_REGION}|g" task-definition.json
+          sed -i "s|__LOG_GROUP__|${ECS_LOG_GROUP}|g" task-definition.json
+          sed -i "s|__CONTAINER_PORT__|${CONTAINER_PORT}|g" task-definition.json
+          sed -i "s|__TASK_CPU__|${ECS_TASK_CPU}|g" task-definition.json
+          sed -i "s|__TASK_MEMORY__|${ECS_TASK_MEMORY}|g" task-definition.json
+          sed -i "s|__DFNS_API_URL__|${DFNS_API_URL}|g" task-definition.json
+          sed -i "s|__DFNS_ORG_ID__|${DFNS_ORG_ID}|g" task-definition.json
+          sed -i "s|__SECRET_DFNS_AUTH_TOKEN__|${SECRET_ARN_DFNS_AUTH_TOKEN}|g" task-definition.json
+          sed -i "s|__SECRET_DFNS_CRED_ID__|${SECRET_ARN_DFNS_CRED_ID}|g" task-definition.json
+          sed -i "s|__SECRET_DFNS_PRIVATE_KEY__|${SECRET_ARN_DFNS_PRIVATE_KEY}|g" task-definition.json
+          sed -i "s|__SECRET_RABBITMQ_URL__|${SECRET_ARN_RABBITMQ_URL}|g" task-definition.json
+          sed -i "s|__SECRET_SENTRY_DSN__|${SECRET_ARN_SENTRY_DSN}|g" task-definition.json
+
+      - name: Inject image into task definition
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: dfns-integration
+          image: ${{ steps.image.outputs.image_uri }}
+
+      - name: Enforce service reliability settings
+        env:
+          ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+          ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+          ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
+        run: |
+          set -eu
+          ECS_DESIRED_COUNT="${ECS_DESIRED_COUNT:-1}"
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --desired-count "${ECS_DESIRED_COUNT}" \
+            --deployment-configuration "deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100"
+
+      - name: Deploy task definition to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ vars.ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          force-new-deployment: true
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployment finished"
+          echo "Environment: ${{ steps.target.outputs.deploy_env }}"
+          echo "Cluster: ${{ vars.ECS_CLUSTER }}"
+          echo "Service: ${{ vars.ECS_SERVICE }}"
