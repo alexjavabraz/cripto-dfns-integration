@@ -13,15 +13,16 @@ const envSchema = z.object({
   DFNS_CRED_ID: z.string().min(1),
   DFNS_PRIVATE_KEY: z.string().min(1),
 
-  // RPC endpoints per network
-  RPC_ETHEREUM: z.string().url(),
-  RPC_POLYGON: z.string().url(),
-  RPC_ARBITRUM: z.string().url(),
+  // RPC endpoints per network (optional — public fallback RPCs are used when absent)
+  RPC_ETHEREUM: z.string().url().optional(),
+  RPC_POLYGON: z.string().url().optional(),
+  RPC_ARBITRUM: z.string().url().optional(),
 
-  // DFNS wallet IDs per network (pre-created wallets to deploy from)
-  DFNS_WALLET_ETHEREUM: z.string().min(1),
-  DFNS_WALLET_POLYGON: z.string().min(1),
-  DFNS_WALLET_ARBITRUM: z.string().min(1),
+  // DFNS wallet IDs are now loaded dynamically from the DFNS wallet registry at startup.
+  // These env vars are kept for backward compatibility but are no longer required.
+  DFNS_WALLET_ETHEREUM: z.string().min(1).optional(),
+  DFNS_WALLET_POLYGON: z.string().min(1).optional(),
+  DFNS_WALLET_ARBITRUM: z.string().min(1).optional(),
 
   // RabbitMQ
   RABBITMQ_URL: z.string().url(),

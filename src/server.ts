@@ -8,6 +8,7 @@ import { startCreationConsumer } from './modules/rabbitmq/creation-consumer.js'
 import { runSmokeTest } from './smoke-test.js'
 import { startBalanceConsumer } from './modules/rabbitmq/balance-consumer.js'
 import { startTokenEventConsumer } from './modules/rabbitmq/token-event-consumer.js'
+import { loadWalletRegistry } from './modules/dfns/wallet-registry.js'
 
 // Initialize Sentry first — before anything else can throw
 initSentry()
@@ -19,6 +20,14 @@ async function main(): Promise<void> {
   const app = await buildApp()
   await app.listen({ port: env.PORT, host: '0.0.0.0' })
   logger.info(`HTTP server listening on port ${env.PORT}`)
+
+  // --- Load DFNS wallet registry (determines valid networks) ---
+  try {
+    await loadWalletRegistry()
+  } catch (error) {
+    captureError(error, { context: 'startup:wallet-registry' })
+    throw error
+  }
 
   // --- Connect to RabbitMQ and start consuming ---
   let channel

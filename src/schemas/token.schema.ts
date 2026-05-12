@@ -3,8 +3,9 @@ import { z } from 'zod'
 export const TokenType = z.enum(['ERC20', 'ERC721', 'ERC1155'])
 export type TokenType = z.infer<typeof TokenType>
 
-export const Network = z.enum(['ethereum', 'polygon', 'arbitrum'])
-export type Network = z.infer<typeof Network>
+// Network is a dynamic string — valid values are determined at runtime
+// by the DFNS wallet registry (lowercase DFNS network IDs, e.g. 'ethereumsepolia')
+export type Network = string
 
 const ethereumAddress = z
   .string()
@@ -21,7 +22,7 @@ const erc20Fields = z.object({
   name: z.string().min(1).max(64),
   symbol: z.string().min(1).max(11).toUpperCase(),
   decimals: z.number().int().min(0).max(18).default(18),
-  supply: z.number().positive().int().max(Number.MAX_SAFE_INTEGER),
+  supply: z.number().positive(),
   ownerAddress: ethereumAddress,
 })
 
@@ -42,7 +43,7 @@ const erc1155Fields = z.object({
 const baseFields = z.object({
   idempotencyKey: z.string().min(1),
   timestamp: z.string().datetime(),
-  network: Network,
+  network: z.string().min(1),
   correlationId: z.string().uuid().optional(),
 })
 

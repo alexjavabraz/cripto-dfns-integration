@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { Network } from './token.schema.js'
 
 const ethereumAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'Invalid Ethereum address')
 
@@ -8,8 +7,8 @@ export const balanceRequestSchema = z.object({
   idempotencyKey: z.string().min(1),
   timestamp: z.string().datetime(),
   network: z.object({
-    name: Network,
-    chainId: z.number().int().positive(),
+    name: z.string().min(1),
+    chainId: z.number().int().min(0),
   }),
   token: z.object({
     address: ethereumAddress,

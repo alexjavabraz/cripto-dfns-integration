@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Network, TokenType } from './token.schema.js'
+import { TokenType } from './token.schema.js'
 
 const ethereumAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'Invalid Ethereum address')
 
@@ -8,8 +8,8 @@ export const creationRequestMessageSchema = z.object({
   idempotencyKey: z.string().min(1),
   timestamp: z.string().datetime(),
   network: z.object({
-    name: Network,
-    chainId: z.number().int().positive(),
+    name: z.string().min(1),
+    chainId: z.number().int().min(0),
   }),
   token: z.object({
     standard: TokenType,
@@ -21,7 +21,7 @@ export const creationRequestMessageSchema = z.object({
     erc20: z
       .object({
         decimals: z.number().int().min(0).max(18).default(18),
-        supply: z.number().positive().int().max(Number.MAX_SAFE_INTEGER),
+        supply: z.number().positive(),
       })
       .optional(),
     erc721: z

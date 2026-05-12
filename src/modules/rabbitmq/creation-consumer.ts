@@ -2,6 +2,7 @@ import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
 import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
+import { isValidNetwork, getValidNetworks } from '../dfns/wallet-registry.js'
 import {
   creationRequestMessageSchema,
   type CreationRequestMessage,
@@ -140,6 +141,43 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
 
     const creationMsg = parsed.data
     const { idempotencyKey, metadata, network, token } = creationMsg
+
+    // Network registry check — must have a registered DFNS wallet
+    if (!isValidNetwork(network.name)) {
+      const validNetworks = getValidNetworks()
+      logger.warn('Unknown network — no DFNS wallet registered', {
+        network: network.name,
+        validNetworks,
+        idempotencyKey,
+        correlationId: metadata.correlationId,
+      })
+      captureError(new Error(`UNKNOWN_NETWORK: "${network.name}" has no registered DFNS wallet`), {
+        context: 'creation-consumer:network-validation',
+        network: network.name,
+        validNetworks,
+        idempotencyKey,
+      })
+      const errorEvent: CreationErrorEvent = {
+        event: 'token.creation.failed',
+        idempotencyKey,
+        timestamp: new Date().toISOString(),
+        network: { name: network.name, chainId: network.chainId },
+        token: { standard: token.standard, name: token.name, symbol: token.symbol },
+        error: {
+          code: 'UNKNOWN_NETWORK',
+          message: `Network "${network.name}" has no registered DFNS wallet. Valid networks: ${validNetworks.join(', ')}`,
+          retryable: false,
+        },
+        metadata: {
+          correlationId: metadata.correlationId,
+          processedBy: PROCESSED_BY,
+          durationMs: Date.now() - startMs,
+        },
+      }
+      publishError(channel, errorEvent)
+      channel.ack(msg)
+      return
+    }
 
     // Idempotency check
     if (PROCESSED_KEYS.has(idempotencyKey)) {
