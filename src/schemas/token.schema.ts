@@ -22,7 +22,7 @@ const erc20Fields = z.object({
   name: z.string().min(1).max(64),
   symbol: z.string().min(1).max(11).toUpperCase(),
   decimals: z.number().int().min(0).max(18).default(18),
-  supply: z.number().positive(),
+  supply: z.union([z.string(), z.number()]).transform((v) => String(v)),
   ownerAddress: ethereumAddress,
 })
 

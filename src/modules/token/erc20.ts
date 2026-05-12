@@ -25,11 +25,13 @@ export async function deployERC20(
   })
 
   // Constructor: (name, symbol, decimals, initialSupply, owner)
+  // Supply is kept as string throughout the pipeline to preserve precision beyond
+  // Number.MAX_SAFE_INTEGER — convert to BigInt here for ABI encoding.
   const contract = await factory.deploy(
     message.name,
     message.symbol,
     message.decimals,
-    message.supply,
+    BigInt(message.supply),
     message.ownerAddress,
   )
 

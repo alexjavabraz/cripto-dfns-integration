@@ -21,7 +21,8 @@ export const creationRequestMessageSchema = z.object({
     erc20: z
       .object({
         decimals: z.number().int().min(0).max(18).default(18),
-        supply: z.number().positive(),
+        // supply sent as string to preserve precision beyond Number.MAX_SAFE_INTEGER
+        supply: z.union([z.string(), z.number()]).transform((v) => String(v)),
       })
       .optional(),
     erc721: z
