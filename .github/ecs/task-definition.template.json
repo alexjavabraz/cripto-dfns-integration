@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "dfns-integration",
-      "image": "public.ecr.aws/docker/library/node:24-alpine",
+      "image": "__IMAGE_URI__",
       "essential": true,
       "portMappings": [
         {
