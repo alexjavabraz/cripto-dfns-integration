@@ -50,6 +50,11 @@ const envSchema = z.object({
   QUEUE_TOKEN_TRANSFER_REQUEST: z.string().default('dfns_listen_token_transfer_request'),
   EXCHANGE_TOKEN_TRANSFER_RESPONSE: z.string().default('dfns_publish_token_transfer_response'),
 
+  // Account create
+  EXCHANGE_ACCOUNT_CREATE_REQUEST: z.string().default('bff_publish_account_create_request'),
+  QUEUE_ACCOUNT_CREATE_REQUEST: z.string().default('dfns_listen_account_create_request'),
+  EXCHANGE_ACCOUNT_CREATE_RESPONSE: z.string().default('dfns_publish_account_create_response'),
+
   // Sentry
   SENTRY_DSN: z.string().url(),
 
