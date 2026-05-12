@@ -7,8 +7,6 @@ import { executeTokenOperation } from '../token/token-ops.js'
 import { getNetworkConfig } from '../token/networks.js'
 
 const PROCESSED_BY = 'dfns-integration'
-// Durable queue bound to the TOKEN_EVENT exchange
-const TOKEN_EVENT_QUEUE = 'token_event.queue'
 
 function publishResponse(
   channel: amqplib.Channel,
@@ -28,10 +26,10 @@ function publishResponse(
 export async function startTokenEventConsumer(channel: amqplib.Channel): Promise<void> {
   logger.info('Starting token event consumer', {
     exchange: env.TOKEN_EVENT,
-    queue: TOKEN_EVENT_QUEUE,
+    queue: env.QUEUE_TOKEN_EVENT,
   })
 
-  await channel.consume(TOKEN_EVENT_QUEUE, async (msg) => {
+  await channel.consume(env.QUEUE_TOKEN_EVENT, async (msg) => {
     if (!msg) return
 
     const startMs = Date.now()
@@ -42,7 +40,7 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
       rawPayload = JSON.parse(msg.content.toString('utf-8')) as unknown
       Sentry.addBreadcrumb({
         category: 'rabbitmq.receive',
-        message: `Message received from queue ${TOKEN_EVENT_QUEUE}`,
+        message: `Message received from queue ${env.QUEUE_TOKEN_EVENT}`,
         data: rawPayload as Record<string, unknown>,
         level: 'info',
       })
@@ -118,7 +116,7 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
 
       publishResponse(channel, response)
       captureMessage('RabbitMQ message processed: token event succeeded', 'info', {
-        queue: TOKEN_EVENT_QUEUE,
+        queue: env.QUEUE_TOKEN_EVENT,
         idempotencyKey,
         correlationId: metadata.correlationId,
         network: network.name,

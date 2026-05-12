@@ -41,6 +41,7 @@ const envSchema = z.object({
 
   // Token event operations (mint, burn, pause, unpause)
   TOKEN_EVENT: z.string().default('token_event'),
+  QUEUE_TOKEN_EVENT: z.string().default('token_event.queue'),
   EXCHANGE_TOKEN_EVENT_RESPONSE: z.string().default('token_event_response'),
 
   // Sentry

@@ -91,8 +91,8 @@ export async function connect(): Promise<amqplib.Channel> {
 
   // ── Token event exchange + durable consumer queue + response exchange ─────────
   await _channel.assertExchange(env.TOKEN_EVENT, 'topic', { durable: true })
-  _channel = await assertQueueSafe(_model, _channel, 'token_event.queue', { durable: true })
-  await _channel.bindQueue('token_event.queue', env.TOKEN_EVENT, '#')
+  _channel = await assertQueueSafe(_model, _channel, env.QUEUE_TOKEN_EVENT, { durable: true })
+  await _channel.bindQueue(env.QUEUE_TOKEN_EVENT, env.TOKEN_EVENT, '#')
   await _channel.assertExchange(env.EXCHANGE_TOKEN_EVENT_RESPONSE, 'topic', { durable: true })
 
   // ── Process one message at a time ─────────────────────────────────────────────
