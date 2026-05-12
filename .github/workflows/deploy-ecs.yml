@@ -135,9 +135,9 @@ jobs:
           ECS_TASK_MEMORY: ${{ vars.ECS_TASK_MEMORY }}
         run: |
           set -eu
-          CONTAINER_PORT="${CONTAINER_PORT:-3000}"
-          ECS_TASK_CPU="${ECS_TASK_CPU:-512}"
-          ECS_TASK_MEMORY="${ECS_TASK_MEMORY:-1024}"
+          export CONTAINER_PORT="${CONTAINER_PORT:-3000}"
+          export ECS_TASK_CPU="${ECS_TASK_CPU:-512}"
+          export ECS_TASK_MEMORY="${ECS_TASK_MEMORY:-1024}"
 
           python - <<'PY'
           import os
@@ -147,15 +147,18 @@ jobs:
           output_path = Path("task-definition.json")
 
           content = template_path.read_text(encoding="utf-8")
+          container_port = str(int(os.environ["CONTAINER_PORT"]))
+          task_cpu = str(int(os.environ["ECS_TASK_CPU"]))
+          task_memory = str(int(os.environ["ECS_TASK_MEMORY"]))
           replacements = {
               "__TASK_FAMILY__": f"{os.environ['ECS_TASK_FAMILY']}-{os.environ['DEPLOY_ENV']}",
               "__TASK_ROLE_ARN__": os.environ["ECS_TASK_ROLE_ARN"],
               "__EXECUTION_ROLE_ARN__": os.environ["ECS_EXECUTION_ROLE_ARN"],
               "__AWS_REGION__": os.environ["AWS_REGION"],
               "__LOG_GROUP__": os.environ["ECS_LOG_GROUP"],
-              "__CONTAINER_PORT__": os.environ["CONTAINER_PORT"],
-              "__TASK_CPU__": os.environ["ECS_TASK_CPU"],
-              "__TASK_MEMORY__": os.environ["ECS_TASK_MEMORY"],
+              "__CONTAINER_PORT__": container_port,
+              "__TASK_CPU__": task_cpu,
+              "__TASK_MEMORY__": task_memory,
               "__DFNS_API_URL__": os.environ["DFNS_API_URL"],
               "__DFNS_ORG_ID__": os.environ["DFNS_ORG_ID"],
               "__SECRET_DFNS_AUTH_TOKEN__": os.environ["SECRET_ARN_DFNS_AUTH_TOKEN"],
