@@ -9,9 +9,8 @@ export function initSentry(): void {
     sendDefaultPii: true,
     integrations: [
       Sentry.httpIntegration(),
-      Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+      Sentry.captureConsoleIntegration({ levels: ['log', 'warn', 'error'] }),
     ],
-    enableLogs: true,
   })
 }
 
