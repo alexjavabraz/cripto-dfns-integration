@@ -57,11 +57,11 @@ jobs:
           ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP }}
           DFNS_API_URL: ${{ vars.DFNS_API_URL }}
           DFNS_ORG_ID: ${{ vars.DFNS_ORG_ID }}
-          SECRET_ARN_DFNS_AUTH_TOKEN: ${{ vars.SECRET_ARN_DFNS_AUTH_TOKEN }}
-          SECRET_ARN_DFNS_CRED_ID: ${{ vars.SECRET_ARN_DFNS_CRED_ID }}
-          SECRET_ARN_DFNS_PRIVATE_KEY: ${{ vars.SECRET_ARN_DFNS_PRIVATE_KEY }}
-          SECRET_ARN_RABBITMQ_URL: ${{ vars.SECRET_ARN_RABBITMQ_URL }}
-          SECRET_ARN_SENTRY_DSN: ${{ vars.SECRET_ARN_SENTRY_DSN }}
+          SECRET_ARN_DFNS_AUTH_TOKEN: ${{ vars.DFNS_AUTH_TOKEN }}
+          SECRET_ARN_DFNS_CRED_ID: ${{ vars.DFNS_CRED_ID }}
+          SECRET_ARN_DFNS_PRIVATE_KEY: ${{ vars.DFNS_PRIVATE_KEY }}
+          SECRET_ARN_RABBITMQ_URL: ${{ vars.RABBITMQ_URL }}
+          SECRET_ARN_SENTRY_DSN: ${{ vars.SENTRY_DSN }}
         run: |
           set -eu
           required=(
@@ -125,11 +125,11 @@ jobs:
           ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP }}
           DFNS_API_URL: ${{ vars.DFNS_API_URL }}
           DFNS_ORG_ID: ${{ vars.DFNS_ORG_ID }}
-          SECRET_ARN_DFNS_AUTH_TOKEN: ${{ vars.SECRET_ARN_DFNS_AUTH_TOKEN }}
-          SECRET_ARN_DFNS_CRED_ID: ${{ vars.SECRET_ARN_DFNS_CRED_ID }}
-          SECRET_ARN_DFNS_PRIVATE_KEY: ${{ vars.SECRET_ARN_DFNS_PRIVATE_KEY }}
-          SECRET_ARN_RABBITMQ_URL: ${{ vars.SECRET_ARN_RABBITMQ_URL }}
-          SECRET_ARN_SENTRY_DSN: ${{ vars.SECRET_ARN_SENTRY_DSN }}
+          SECRET_ARN_DFNS_AUTH_TOKEN: ${{ vars.DFNS_AUTH_TOKEN }}
+          SECRET_ARN_DFNS_CRED_ID: ${{ vars.DFNS_CRED_ID }}
+          SECRET_ARN_DFNS_PRIVATE_KEY: ${{ vars.DFNS_PRIVATE_KEY }}
+          SECRET_ARN_RABBITMQ_URL: ${{ vars.RABBITMQ_URL }}
+          SECRET_ARN_SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           CONTAINER_PORT: ${{ vars.CONTAINER_PORT }}
           ECS_TASK_CPU: ${{ vars.ECS_TASK_CPU }}
           ECS_TASK_MEMORY: ${{ vars.ECS_TASK_MEMORY }}
@@ -170,11 +170,11 @@ jobs:
               "__TASK_MEMORY__": task_memory,
               "__DFNS_API_URL__": required_env("DFNS_API_URL"),
               "__DFNS_ORG_ID__": required_env("DFNS_ORG_ID"),
-              "__SECRET_DFNS_AUTH_TOKEN__": required_env("SECRET_ARN_DFNS_AUTH_TOKEN"),
-              "__SECRET_DFNS_CRED_ID__": required_env("SECRET_ARN_DFNS_CRED_ID"),
-              "__SECRET_DFNS_PRIVATE_KEY__": required_env("SECRET_ARN_DFNS_PRIVATE_KEY"),
-              "__SECRET_RABBITMQ_URL__": required_env("SECRET_ARN_RABBITMQ_URL"),
-              "__SECRET_SENTRY_DSN__": required_env("SECRET_ARN_SENTRY_DSN"),
+              "__SECRET_DFNS_AUTH_TOKEN__": required_env("DFNS_AUTH_TOKEN"),
+              "__SECRET_DFNS_CRED_ID__": required_env("DFNS_CRED_ID"),
+              "__SECRET_DFNS_PRIVATE_KEY__": required_env("DFNS_PRIVATE_KEY"),
+              "__SECRET_RABBITMQ_URL__": required_env("RABBITMQ_URL"),
+              "__SECRET_SENTRY_DSN__": required_env("SENTRY_DSN"),
           }
 
           for token, value in replacements.items():
