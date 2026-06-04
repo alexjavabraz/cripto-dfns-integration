@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION:     us-east-1
-  ECR_REPOSITORY: dfns-integration
+  ECR_REPOSITORY: cripto/dfns_integration
 
 permissions:
   id-token: write
@@ -25,20 +25,13 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID_PROD }}:role/GitHubActionsRole
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: dfns-deploy-${{ github.run_id }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Create ECR repository if not exists
-        run: |
-          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" 2>/dev/null || \
-          aws ecr create-repository \
-            --repository-name "$ECR_REPOSITORY" \
-            --image-scanning-configuration scanOnPush=true
 
       - name: Build and push to ECR
         env:
@@ -68,10 +61,14 @@ jobs:
             set -e
             aws ecr get-login-password --region "$AWS_REGION" | \
               docker login --username AWS --password-stdin "$ECR_REGISTRY"
-            cd /app
-            docker compose pull dfns
-            docker compose up -d --no-deps dfns
-            docker system prune -f --volumes=false
+            docker pull "$ECR_REGISTRY/cripto/dfns_integration:latest"
+            docker rm -f dfns || true
+            docker run -d \
+              --name dfns \
+              --restart unless-stopped \
+              --env-file ~/cripto-dfns/.env \
+              "$ECR_REGISTRY/cripto/dfns_integration:latest"
+            docker image prune -f
 
       - name: Deployment summary
         run: |
