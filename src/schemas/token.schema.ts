@@ -22,7 +22,15 @@ const erc20Fields = z.object({
   name: z.string().min(1).max(64),
   symbol: z.string().min(1).max(11).toUpperCase(),
   decimals: z.number().int().min(0).max(18).default(18),
-  supply: z.union([z.string(), z.number()]).transform((v) => String(v)),
+  supply: z.union([z.string(), z.number()]).transform((v) => {
+    const str = String(v)
+    // JavaScript serialises large integers in scientific notation (e.g. "1e+22"),
+    // which BigInt() cannot parse. Normalise to a decimal integer string.
+    if (/[eE]/.test(str)) {
+      return BigInt(Math.round(Number(str))).toString()
+    }
+    return str
+  }),
   ownerAddress: ethereumAddress,
 })
 
