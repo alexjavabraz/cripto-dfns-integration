@@ -15,9 +15,10 @@ function publishResponse(
   channel: amqplib.Channel,
   event: TokenTransferSuccessResponse | TokenTransferErrorResponse,
 ): void {
-  const routingKey = event.event === 'token.transfer.succeeded'
-    ? 'token.transfer.succeeded'
-    : 'token.transfer.failed'
+  const routingKey =
+    event.event === 'token.transfer.succeeded'
+      ? 'token.transfer.succeeded'
+      : 'token.transfer.failed'
   channel.publish(
     env.EXCHANGE_TOKEN_TRANSFER_RESPONSE,
     routingKey,
@@ -72,8 +73,14 @@ export async function startTransferConsumer(channel: amqplib.Channel): Promise<v
         issues,
         idempotencyKey,
       })
-      const validationError = new Error(`Invalid token transfer: ${JSON.stringify(issues.fieldErrors)}`)
-      captureError(validationError, { context: 'transfer-consumer:validation', idempotencyKey, issues })
+      const validationError = new Error(
+        `Invalid token transfer: ${JSON.stringify(issues.fieldErrors)}`,
+      )
+      captureError(validationError, {
+        context: 'transfer-consumer:validation',
+        idempotencyKey,
+        issues,
+      })
 
       const errorEvent: TokenTransferErrorResponse = {
         event: 'token.transfer.failed',
@@ -85,7 +92,9 @@ export async function startTransferConsumer(channel: amqplib.Channel): Promise<v
         transfer: { toAddress: '0x0000000000000000000000000000000000000000', amount: '0' },
         error: { code: 'VALIDATION_ERROR', message: validationError.message },
         metadata: {
-          correlationId: String((raw?.['metadata'] as Record<string, unknown>)?.['correlationId'] ?? 'unknown'),
+          correlationId: String(
+            (raw?.['metadata'] as Record<string, unknown>)?.['correlationId'] ?? 'unknown',
+          ),
           processedBy: PROCESSED_BY,
           durationMs: Date.now() - startMs,
         },
@@ -118,7 +127,7 @@ export async function startTransferConsumer(channel: amqplib.Channel): Promise<v
         requester: {
           userId: requester.userId,
           ...(requester.email !== undefined && { email: requester.email }),
-          ...(requester.ip   !== undefined && { ip:    requester.ip }),
+          ...(requester.ip !== undefined && { ip: requester.ip }),
         },
         token,
         transfer,
@@ -174,7 +183,7 @@ export async function startTransferConsumer(channel: amqplib.Channel): Promise<v
         requester: {
           userId: requester.userId,
           ...(requester.email !== undefined && { email: requester.email }),
-          ...(requester.ip   !== undefined && { ip:    requester.ip }),
+          ...(requester.ip !== undefined && { ip: requester.ip }),
         },
         token,
         transfer,

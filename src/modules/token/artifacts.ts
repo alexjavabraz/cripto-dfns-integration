@@ -24,7 +24,6 @@ function loadArtifact(contractName: string): ContractArtifact {
     `${contractName}.json`,
   )
 
-   
   const raw = require(artifactPath) as { abi: InterfaceAbi; bytecode: string }
   return { abi: raw.abi, bytecode: raw.bytecode }
 }

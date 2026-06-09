@@ -33,9 +33,13 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
 
   // --- Health check endpoint (no auth required) ---
-  app.get('/health', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (_req, reply) => {
-    return reply.send({ status: 'ok', env: env.NODE_ENV, timestamp: new Date().toISOString() })
-  })
+  app.get(
+    '/health',
+    { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+    async (_req, reply) => {
+      return reply.send({ status: 'ok', env: env.NODE_ENV, timestamp: new Date().toISOString() })
+    },
+  )
 
   // --- Request logging ---
   app.addHook('onRequest', (req, _reply, done) => {

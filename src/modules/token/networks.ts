@@ -80,7 +80,7 @@ export function getNetworkConfig(network: string): NetworkConfig {
   if (!meta) {
     throw new Error(
       `No RPC/chainId metadata configured for network: ${network}. ` +
-      `Add an entry to NETWORK_METADATA in networks.ts.`,
+        `Add an entry to NETWORK_METADATA in networks.ts.`,
     )
   }
 

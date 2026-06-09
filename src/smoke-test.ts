@@ -52,15 +52,16 @@ export async function runSmokeTest(channel: amqplib.Channel): Promise<void> {
 
   logger.info('Smoke test: publishing test message', { idempotencyKey, correlationId })
 
-  channel.sendToQueue(
-    env.QUEUE_REQUEST_TOKEN_CREATION,
-    Buffer.from(JSON.stringify(message)),
-    { persistent: true, contentType: 'application/json' },
-  )
+  channel.sendToQueue(env.QUEUE_REQUEST_TOKEN_CREATION, Buffer.from(JSON.stringify(message)), {
+    persistent: true,
+    contentType: 'application/json',
+  })
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error(`Smoke test timed out after ${TIMEOUT_MS / 1000}s waiting for deployment result`))
+      reject(
+        new Error(`Smoke test timed out after ${TIMEOUT_MS / 1000}s waiting for deployment result`),
+      )
     }, TIMEOUT_MS)
 
     const done = (err?: Error): void => {
@@ -69,36 +70,48 @@ export async function runSmokeTest(channel: amqplib.Channel): Promise<void> {
       else resolve()
     }
 
-    void channel.consume(successQ.queue, (msg) => {
-      if (!msg) return
-      try {
-        const event = JSON.parse(msg.content.toString('utf-8')) as Record<string, unknown>
-        if (event['idempotencyKey'] !== idempotencyKey) return
-        channel.ack(msg)
-        const deployment = event['deployment'] as Record<string, unknown> | undefined
-        const explorer = event['explorer'] as Record<string, unknown> | undefined
-        logger.info('Smoke test passed', {
-          contractAddress: deployment?.['contractAddress'],
-          txHash: deployment?.['transactionHash'],
-          explorerContractUrl: explorer?.['contractUrl'],
-        })
-        done()
-      } catch (err) {
-        done(err instanceof Error ? err : new Error(String(err)))
-      }
-    }, { noAck: false })
+    void channel.consume(
+      successQ.queue,
+      (msg) => {
+        if (!msg) return
+        try {
+          const event = JSON.parse(msg.content.toString('utf-8')) as Record<string, unknown>
+          if (event['idempotencyKey'] !== idempotencyKey) return
+          channel.ack(msg)
+          const deployment = event['deployment'] as Record<string, unknown> | undefined
+          const explorer = event['explorer'] as Record<string, unknown> | undefined
+          logger.info('Smoke test passed', {
+            contractAddress: deployment?.['contractAddress'],
+            txHash: deployment?.['transactionHash'],
+            explorerContractUrl: explorer?.['contractUrl'],
+          })
+          done()
+        } catch (err) {
+          done(err instanceof Error ? err : new Error(String(err)))
+        }
+      },
+      { noAck: false },
+    )
 
-    void channel.consume(errorQ.queue, (msg) => {
-      if (!msg) return
-      try {
-        const event = JSON.parse(msg.content.toString('utf-8')) as Record<string, unknown>
-        if (event['idempotencyKey'] !== idempotencyKey) return
-        channel.ack(msg)
-        const error = event['error'] as Record<string, unknown> | undefined
-        done(new Error(`Smoke test failed: [${String(error?.['code'])}] ${String(error?.['message'])}`))
-      } catch (err) {
-        done(err instanceof Error ? err : new Error(String(err)))
-      }
-    }, { noAck: false })
+    void channel.consume(
+      errorQ.queue,
+      (msg) => {
+        if (!msg) return
+        try {
+          const event = JSON.parse(msg.content.toString('utf-8')) as Record<string, unknown>
+          if (event['idempotencyKey'] !== idempotencyKey) return
+          channel.ack(msg)
+          const error = event['error'] as Record<string, unknown> | undefined
+          done(
+            new Error(
+              `Smoke test failed: [${String(error?.['code'])}] ${String(error?.['message'])}`,
+            ),
+          )
+        } catch (err) {
+          done(err instanceof Error ? err : new Error(String(err)))
+        }
+      },
+      { noAck: false },
+    )
   })
 }

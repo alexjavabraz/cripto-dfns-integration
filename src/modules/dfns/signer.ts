@@ -61,11 +61,13 @@ export class DfnsSigner extends AbstractSigner {
     const provider = this.provider
     const from = await this.getAddress()
 
-    const nonce = tx.nonce != null ? Number(tx.nonce) : await provider.getTransactionCount(from, 'pending')
+    const nonce =
+      tx.nonce != null ? Number(tx.nonce) : await provider.getTransactionCount(from, 'pending')
 
-    const estimatedGas = tx.gasLimit != null
-      ? BigInt(tx.gasLimit.toString())
-      : (await provider.estimateGas({ ...tx, from }).then((g) => (g * 12n) / 10n))
+    const estimatedGas =
+      tx.gasLimit != null
+        ? BigInt(tx.gasLimit.toString())
+        : await provider.estimateGas({ ...tx, from }).then((g) => (g * 12n) / 10n)
 
     const feeData = await provider.getFeeData()
     const maxFeePerGas: bigint =

@@ -125,7 +125,8 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
       })
       const errorEvent: CreationErrorEvent = {
         event: 'token.creation.failed',
-        idempotencyKey: (rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string ?? 'unknown',
+        idempotencyKey:
+          ((rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string) ?? 'unknown',
         timestamp: new Date().toISOString(),
         network: { name: 'unknown', chainId: 0 },
         token: { standard: 'unknown' },
@@ -135,7 +136,8 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
           retryable: false,
         },
         metadata: {
-          correlationId: (rawPayload as Record<string, unknown>)?.['metadata'] as string ?? 'unknown',
+          correlationId:
+            ((rawPayload as Record<string, unknown>)?.['metadata'] as string) ?? 'unknown',
           processedBy: PROCESSED_BY,
           durationMs: Date.now() - startMs,
         },
@@ -187,12 +189,18 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
 
     // Idempotency check
     if (PROCESSED_KEYS.has(idempotencyKey)) {
-      logger.warn('Duplicate creation request detected', { idempotencyKey, correlationId: metadata.correlationId })
-      captureError(new Error(`DUPLICATE_REQUEST: idempotencyKey "${idempotencyKey}" already processed`), {
-        context: 'creation-consumer:idempotency',
+      logger.warn('Duplicate creation request detected', {
         idempotencyKey,
         correlationId: metadata.correlationId,
       })
+      captureError(
+        new Error(`DUPLICATE_REQUEST: idempotencyKey "${idempotencyKey}" already processed`),
+        {
+          context: 'creation-consumer:idempotency',
+          idempotencyKey,
+          correlationId: metadata.correlationId,
+        },
+      )
       const errorEvent: CreationErrorEvent = {
         event: 'token.creation.failed',
         idempotencyKey,

@@ -2,21 +2,26 @@ import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
 import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
-import { balanceRequestSchema, type BalanceResponse, type BalanceErrorResponse } from '../../schemas/balance.schema.js'
+import {
+  balanceRequestSchema,
+  type BalanceResponse,
+  type BalanceErrorResponse,
+} from '../../schemas/balance.schema.js'
 import { getERC20Balance } from '../token/balance.js'
 
 const PROCESSED_BY = 'dfns-integration'
 const ROUTING_KEY = 'token.balance.responded'
 const ERROR_ROUTING_KEY = 'token.balance.failed'
 
-function publishResponse(channel: amqplib.Channel, event: BalanceResponse | BalanceErrorResponse): void {
+function publishResponse(
+  channel: amqplib.Channel,
+  event: BalanceResponse | BalanceErrorResponse,
+): void {
   const routingKey = event.event === 'token.balance.responded' ? ROUTING_KEY : ERROR_ROUTING_KEY
-  channel.publish(
-    env.EXCHANGE_BALANCE_RESPONSE,
-    routingKey,
-    Buffer.from(JSON.stringify(event)),
-    { persistent: true, contentType: 'application/json' },
-  )
+  channel.publish(env.EXCHANGE_BALANCE_RESPONSE, routingKey, Buffer.from(JSON.stringify(event)), {
+    persistent: true,
+    contentType: 'application/json',
+  })
 }
 
 export async function startBalanceConsumer(channel: amqplib.Channel): Promise<void> {
@@ -52,16 +57,25 @@ export async function startBalanceConsumer(channel: amqplib.Channel): Promise<vo
     const parsed = balanceRequestSchema.safeParse(rawPayload)
     if (!parsed.success) {
       const issues = parsed.error.flatten()
-      const idempotencyKey = (rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string ?? 'unknown'
-      const correlationId = (rawPayload as Record<string, unknown>)?.['metadata'] as Record<string, unknown> | undefined
+      const idempotencyKey =
+        ((rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string) ?? 'unknown'
+      const correlationId = (rawPayload as Record<string, unknown>)?.['metadata'] as
+        | Record<string, unknown>
+        | undefined
       logger.error('Invalid balance request message', {
         queue: env.QUEUE_GET_BALANCE,
         rawPayload,
         issues,
         idempotencyKey,
       })
-      const validationError = new Error(`Invalid balance request: ${JSON.stringify(issues.fieldErrors)}`)
-      captureError(validationError, { context: 'balance-consumer:validation', idempotencyKey, issues })
+      const validationError = new Error(
+        `Invalid balance request: ${JSON.stringify(issues.fieldErrors)}`,
+      )
+      captureError(validationError, {
+        context: 'balance-consumer:validation',
+        idempotencyKey,
+        issues,
+      })
 
       const errorEvent: BalanceErrorResponse = {
         event: 'token.balance.failed',
@@ -139,7 +153,11 @@ export async function startBalanceConsumer(channel: amqplib.Channel): Promise<vo
         correlationId: metadata.correlationId,
         error: errorMsg,
       })
-      captureError(err, { context: 'balance-consumer:query', idempotencyKey, correlationId: metadata.correlationId })
+      captureError(err, {
+        context: 'balance-consumer:query',
+        idempotencyKey,
+        correlationId: metadata.correlationId,
+      })
 
       const errorEvent: BalanceErrorResponse = {
         event: 'token.balance.failed',

@@ -67,10 +67,18 @@ export async function executeTokenOperation(event: TokenEvent): Promise<TokenOpR
         tx = await (contract.getFunction('mint')(to) as Promise<ethers.TransactionResponse>)
       } else if (token.standard === 'ERC1155') {
         if (!tokenId || !amount) throw new Error('mint on ERC1155 requires tokenId and amount')
-        tx = await (contract.getFunction('mint')(to, BigInt(tokenId), BigInt(amount), data ?? '0x') as Promise<ethers.TransactionResponse>)
+        tx = await (contract.getFunction('mint')(
+          to,
+          BigInt(tokenId),
+          BigInt(amount),
+          data ?? '0x',
+        ) as Promise<ethers.TransactionResponse>)
       } else {
         if (!amount) throw new Error('mint on ERC20 requires amount')
-        tx = await (contract.getFunction('mint')(to, BigInt(amount)) as Promise<ethers.TransactionResponse>)
+        tx = await (contract.getFunction('mint')(
+          to,
+          BigInt(amount),
+        ) as Promise<ethers.TransactionResponse>)
       }
       break
     }
@@ -78,13 +86,22 @@ export async function executeTokenOperation(event: TokenEvent): Promise<TokenOpR
       const { from, amount, tokenId } = operation.params
       if (token.standard === 'ERC721') {
         if (!tokenId) throw new Error('burn on ERC721 requires tokenId')
-        tx = await (contract.getFunction('burn')(BigInt(tokenId)) as Promise<ethers.TransactionResponse>)
+        tx = await (contract.getFunction('burn')(
+          BigInt(tokenId),
+        ) as Promise<ethers.TransactionResponse>)
       } else if (token.standard === 'ERC1155') {
         if (!tokenId || !amount) throw new Error('burn on ERC1155 requires tokenId and amount')
-        tx = await (contract.getFunction('burn')(from, BigInt(tokenId), BigInt(amount)) as Promise<ethers.TransactionResponse>)
+        tx = await (contract.getFunction('burn')(
+          from,
+          BigInt(tokenId),
+          BigInt(amount),
+        ) as Promise<ethers.TransactionResponse>)
       } else {
         if (!amount) throw new Error('burn on ERC20 requires amount')
-        tx = await (contract.getFunction('burn')(from, BigInt(amount)) as Promise<ethers.TransactionResponse>)
+        tx = await (contract.getFunction('burn')(
+          from,
+          BigInt(amount),
+        ) as Promise<ethers.TransactionResponse>)
       }
       break
     }

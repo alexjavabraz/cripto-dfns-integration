@@ -1,7 +1,10 @@
 import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { Sentry, captureMessage } from '../../config/sentry.js'
-import type { CreationSuccessEvent, CreationErrorEvent } from '../../schemas/creation-request.schema.js'
+import type {
+  CreationSuccessEvent,
+  CreationErrorEvent,
+} from '../../schemas/creation-request.schema.js'
 
 export function publishSuccess(channel: amqplib.Channel, event: CreationSuccessEvent): void {
   Sentry.addBreadcrumb({

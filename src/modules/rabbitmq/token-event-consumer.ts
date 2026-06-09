@@ -2,7 +2,11 @@ import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
 import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
-import { tokenEventSchema, type TokenEventResponse, type TokenEventErrorResponse } from '../../schemas/token-event.schema.js'
+import {
+  tokenEventSchema,
+  type TokenEventResponse,
+  type TokenEventErrorResponse,
+} from '../../schemas/token-event.schema.js'
 import { executeTokenOperation } from '../token/token-ops.js'
 import { getNetworkConfig } from '../token/networks.js'
 
@@ -12,9 +16,8 @@ function publishResponse(
   channel: amqplib.Channel,
   event: TokenEventResponse | TokenEventErrorResponse,
 ): void {
-  const routingKey = event.event === 'token.event.succeeded'
-    ? 'token.event.succeeded'
-    : 'token.event.failed'
+  const routingKey =
+    event.event === 'token.event.succeeded' ? 'token.event.succeeded' : 'token.event.failed'
   channel.publish(
     env.EXCHANGE_TOKEN_EVENT_RESPONSE,
     routingKey,
@@ -59,15 +62,22 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
     const parsed = tokenEventSchema.safeParse(rawPayload)
     if (!parsed.success) {
       const issues = parsed.error.flatten()
-      const idempotencyKey = (rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string ?? 'unknown'
+      const idempotencyKey =
+        ((rawPayload as Record<string, unknown>)?.['idempotencyKey'] as string) ?? 'unknown'
       logger.error('Invalid token event message', {
         queue: env.QUEUE_TOKEN_EVENT,
         rawPayload,
         issues,
         idempotencyKey,
       })
-      const validationError = new Error(`Invalid token event: ${JSON.stringify(issues.fieldErrors)}`)
-      captureError(validationError, { context: 'token-event-consumer:validation', idempotencyKey, issues })
+      const validationError = new Error(
+        `Invalid token event: ${JSON.stringify(issues.fieldErrors)}`,
+      )
+      captureError(validationError, {
+        context: 'token-event-consumer:validation',
+        idempotencyKey,
+        issues,
+      })
 
       const raw = rawPayload as Record<string, unknown>
       const errorEvent: TokenEventErrorResponse = {
@@ -76,10 +86,14 @@ export async function startTokenEventConsumer(channel: amqplib.Channel): Promise
         timestamp: new Date().toISOString(),
         network: { name: 'unknown', chainId: 0 },
         token: { address: String(raw?.['token'] ?? ''), standard: 'ERC20' },
-        operation: { type: String((raw?.['operation'] as Record<string, unknown>)?.['type'] ?? 'unknown') },
+        operation: {
+          type: String((raw?.['operation'] as Record<string, unknown>)?.['type'] ?? 'unknown'),
+        },
         error: { code: 'VALIDATION_ERROR', message: validationError.message },
         metadata: {
-          correlationId: String((raw?.['metadata'] as Record<string, unknown>)?.['correlationId'] ?? 'unknown'),
+          correlationId: String(
+            (raw?.['metadata'] as Record<string, unknown>)?.['correlationId'] ?? 'unknown',
+          ),
           processedBy: PROCESSED_BY,
           durationMs: Date.now() - startMs,
         },

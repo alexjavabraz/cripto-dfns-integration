@@ -7,15 +7,9 @@ export type TokenType = z.infer<typeof TokenType>
 // by the DFNS wallet registry (lowercase DFNS network IDs, e.g. 'ethereumsepolia')
 export type Network = string
 
-const ethereumAddress = z
-  .string()
-  .regex(/^0x[0-9a-fA-F]{40}$/, 'Invalid Ethereum address')
+const ethereumAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'Invalid Ethereum address')
 
-const tokenUri = z
-  .string()
-  .url()
-  .max(2048)
-  .optional()
+const tokenUri = z.string().url().max(2048).optional()
 
 // ERC-20 specific fields
 const erc20Fields = z.object({

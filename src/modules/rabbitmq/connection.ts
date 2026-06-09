@@ -36,10 +36,9 @@ async function assertQueueSafe(
     return ch
   } catch (err: unknown) {
     if (isCode406(err)) {
-      logger.warn(
-        `Queue "${queue}" exists with incompatible arguments — deleting and recreating`,
-        { queue },
-      )
+      logger.warn(`Queue "${queue}" exists with incompatible arguments — deleting and recreating`, {
+        queue,
+      })
       // The broker closed the old channel; open a fresh one
       const fresh = await model.createChannel()
       await fresh.deleteQueue(queue) // force-delete regardless of consumers/messages
@@ -79,7 +78,11 @@ export async function connect(): Promise<amqplib.Channel> {
   _channel = await assertQueueSafe(_model, _channel, env.QUEUE_REQUEST_TOKEN_CREATION, {
     durable: true,
   })
-  await _channel.bindQueue(env.QUEUE_REQUEST_TOKEN_CREATION, env.EXCHANGE_REQUEST_TOKEN_CREATION, '#')
+  await _channel.bindQueue(
+    env.QUEUE_REQUEST_TOKEN_CREATION,
+    env.EXCHANGE_REQUEST_TOKEN_CREATION,
+    '#',
+  )
 
   // ── Output exchanges ──────────────────────────────────────────────────────────
   await _channel.assertExchange(env.EXCHANGE_RESPONSE_TOKEN_CREATED, 'topic', { durable: true })
@@ -97,14 +100,26 @@ export async function connect(): Promise<amqplib.Channel> {
 
   // ── Token transfer request queue + response exchange ──────────────────────────
   await _channel.assertExchange(env.EXCHANGE_TOKEN_TRANSFER_REQUEST, 'topic', { durable: true })
-  _channel = await assertQueueSafe(_model, _channel, env.QUEUE_TOKEN_TRANSFER_REQUEST, { durable: true })
-  await _channel.bindQueue(env.QUEUE_TOKEN_TRANSFER_REQUEST, env.EXCHANGE_TOKEN_TRANSFER_REQUEST, '#')
+  _channel = await assertQueueSafe(_model, _channel, env.QUEUE_TOKEN_TRANSFER_REQUEST, {
+    durable: true,
+  })
+  await _channel.bindQueue(
+    env.QUEUE_TOKEN_TRANSFER_REQUEST,
+    env.EXCHANGE_TOKEN_TRANSFER_REQUEST,
+    '#',
+  )
   await _channel.assertExchange(env.EXCHANGE_TOKEN_TRANSFER_RESPONSE, 'topic', { durable: true })
 
   // ── Account create request queue + response exchange ──────────────────────────
   await _channel.assertExchange(env.EXCHANGE_ACCOUNT_CREATE_REQUEST, 'topic', { durable: true })
-  _channel = await assertQueueSafe(_model, _channel, env.QUEUE_ACCOUNT_CREATE_REQUEST, { durable: true })
-  await _channel.bindQueue(env.QUEUE_ACCOUNT_CREATE_REQUEST, env.EXCHANGE_ACCOUNT_CREATE_REQUEST, '#')
+  _channel = await assertQueueSafe(_model, _channel, env.QUEUE_ACCOUNT_CREATE_REQUEST, {
+    durable: true,
+  })
+  await _channel.bindQueue(
+    env.QUEUE_ACCOUNT_CREATE_REQUEST,
+    env.EXCHANGE_ACCOUNT_CREATE_REQUEST,
+    '#',
+  )
   await _channel.assertExchange(env.EXCHANGE_ACCOUNT_CREATE_RESPONSE, 'topic', { durable: true })
 
   // ── Process one message at a time ─────────────────────────────────────────────

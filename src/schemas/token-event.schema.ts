@@ -5,15 +5,15 @@ const ethereumAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'Invalid Ethereu
 // Operation-specific params
 const mintParams = z.object({
   to: ethereumAddress,
-  amount: z.string().min(1).optional(),   // wei string — required for ERC20/ERC1155, ignored for ERC721
-  tokenId: z.string().optional(),          // required for ERC1155
-  data: z.string().default('0x'),          // extra data for ERC1155
+  amount: z.string().min(1).optional(), // wei string — required for ERC20/ERC1155, ignored for ERC721
+  tokenId: z.string().optional(), // required for ERC1155
+  data: z.string().default('0x'), // extra data for ERC1155
 })
 
 const burnParams = z.object({
   from: ethereumAddress,
-  amount: z.string().min(1).optional(),   // wei string — required for ERC20/ERC1155
-  tokenId: z.string().optional(),          // required for ERC721/ERC1155
+  amount: z.string().min(1).optional(), // wei string — required for ERC20/ERC1155
+  tokenId: z.string().optional(), // required for ERC721/ERC1155
 })
 
 export const tokenEventSchema = z.object({
@@ -29,8 +29,8 @@ export const tokenEventSchema = z.object({
     standard: z.enum(['ERC20', 'ERC721', 'ERC1155']),
   }),
   operation: z.discriminatedUnion('type', [
-    z.object({ type: z.literal('mint'),    params: mintParams }),
-    z.object({ type: z.literal('burn'),    params: burnParams }),
+    z.object({ type: z.literal('mint'), params: mintParams }),
+    z.object({ type: z.literal('burn'), params: burnParams }),
     z.object({ type: z.literal('pause') }),
     z.object({ type: z.literal('unpause') }),
   ]),

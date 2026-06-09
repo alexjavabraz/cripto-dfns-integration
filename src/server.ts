@@ -37,7 +37,10 @@ async function main(): Promise<void> {
   try {
     channel = await connect()
   } catch (error) {
-    captureError(error, { context: 'startup:rabbitmq-connect', url: env.RABBITMQ_URL.replace(/:[^:@]+@/, ':***@') })
+    captureError(error, {
+      context: 'startup:rabbitmq-connect',
+      url: env.RABBITMQ_URL.replace(/:[^:@]+@/, ':***@'),
+    })
     throw error
   }
 
@@ -45,7 +48,10 @@ async function main(): Promise<void> {
   try {
     await startCreationConsumer(channel)
   } catch (error) {
-    captureError(error, { context: 'startup:creation-consumer', queue: env.QUEUE_REQUEST_TOKEN_CREATION })
+    captureError(error, {
+      context: 'startup:creation-consumer',
+      queue: env.QUEUE_REQUEST_TOKEN_CREATION,
+    })
     throw error
   }
 
@@ -87,14 +93,20 @@ async function main(): Promise<void> {
   try {
     await startTransferConsumer(channel)
   } catch (error) {
-    captureError(error, { context: 'startup:transfer-consumer', exchange: env.EXCHANGE_TOKEN_TRANSFER_REQUEST })
+    captureError(error, {
+      context: 'startup:transfer-consumer',
+      exchange: env.EXCHANGE_TOKEN_TRANSFER_REQUEST,
+    })
     throw error
   }
 
   try {
     await startAccountConsumer(channel)
   } catch (error) {
-    captureError(error, { context: 'startup:account-consumer', exchange: env.EXCHANGE_ACCOUNT_CREATE_REQUEST })
+    captureError(error, {
+      context: 'startup:account-consumer',
+      exchange: env.EXCHANGE_ACCOUNT_CREATE_REQUEST,
+    })
     throw error
   }
 

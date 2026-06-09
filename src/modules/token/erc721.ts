@@ -25,12 +25,7 @@ export async function deployERC721(
   })
 
   // Constructor: (name, symbol, baseURI, owner)
-  const contract = await factory.deploy(
-    message.name,
-    message.symbol,
-    baseURI,
-    message.ownerAddress,
-  )
+  const contract = await factory.deploy(message.name, message.symbol, baseURI, message.ownerAddress)
 
   const deployTx = contract.deploymentTransaction()
   if (!deployTx) throw new Error('ERC-721 deployment transaction not found')

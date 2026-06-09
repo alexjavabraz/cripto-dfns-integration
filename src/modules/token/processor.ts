@@ -18,8 +18,14 @@ export async function processTokenMessage(rawPayload: unknown): Promise<Deployme
     const issues = parsed.error.flatten()
     const missingFields = Object.keys(issues.fieldErrors)
     logger.error('Invalid token message received', { correlationId, issues })
-    const validationError = new Error(`Invalid token message: missing or invalid fields: ${missingFields.join(', ')}`)
-    captureError(validationError, { correlationId, fieldErrors: issues.fieldErrors, formErrors: issues.formErrors })
+    const validationError = new Error(
+      `Invalid token message: missing or invalid fields: ${missingFields.join(', ')}`,
+    )
+    captureError(validationError, {
+      correlationId,
+      fieldErrors: issues.fieldErrors,
+      formErrors: issues.formErrors,
+    })
     throw validationError
   }
 
@@ -66,9 +72,13 @@ export async function processTokenMessage(rawPayload: unknown): Promise<Deployme
       correlationId,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      errorDetail: error instanceof Error && 'httpStatus' in error
-        ? { httpStatus: (error as unknown as { httpStatus: number }).httpStatus, context: (error as unknown as { context: unknown }).context }
-        : undefined,
+      errorDetail:
+        error instanceof Error && 'httpStatus' in error
+          ? {
+              httpStatus: (error as unknown as { httpStatus: number }).httpStatus,
+              context: (error as unknown as { context: unknown }).context,
+            }
+          : undefined,
     })
     throw error
   }

@@ -20,9 +20,11 @@ export const tokenTransferSchema = z.object({
     toAddress: ethereumAddress,
     amount: z.string().min(1), // display amount, e.g. "10.5"
   }),
-  metadata: z.object({
-    correlationId: z.string().optional(),
-  }).optional(),
+  metadata: z
+    .object({
+      correlationId: z.string().optional(),
+    })
+    .optional(),
 })
 
 export type TokenTransfer = z.infer<typeof tokenTransferSchema>

@@ -13,7 +13,7 @@ export interface TokenBalance {
   name: string
   symbol: string
   decimals: number
-  raw: string       // wei as decimal string
+  raw: string // wei as decimal string
   formatted: string // human-readable (e.g. "1.5")
 }
 

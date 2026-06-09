@@ -16,9 +16,10 @@ function publishResponse(
   channel: amqplib.Channel,
   event: AccountCreateSuccessResponse | AccountCreateErrorResponse,
 ): void {
-  const routingKey = event.event === 'account.create.succeeded'
-    ? 'account.create.succeeded'
-    : 'account.create.failed'
+  const routingKey =
+    event.event === 'account.create.succeeded'
+      ? 'account.create.succeeded'
+      : 'account.create.failed'
   channel.publish(
     env.EXCHANGE_ACCOUNT_CREATE_RESPONSE,
     routingKey,
@@ -74,8 +75,14 @@ export async function startAccountConsumer(channel: amqplib.Channel): Promise<vo
         idempotencyKey,
         userId,
       })
-      const validationError = new Error(`Invalid account create: ${JSON.stringify(issues.fieldErrors)}`)
-      captureError(validationError, { context: 'account-consumer:validation', idempotencyKey, issues })
+      const validationError = new Error(
+        `Invalid account create: ${JSON.stringify(issues.fieldErrors)}`,
+      )
+      captureError(validationError, {
+        context: 'account-consumer:validation',
+        idempotencyKey,
+        issues,
+      })
 
       const errorEvent: AccountCreateErrorResponse = {
         event: 'account.create.failed',

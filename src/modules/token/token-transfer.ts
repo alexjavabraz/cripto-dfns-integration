@@ -11,9 +11,7 @@ import { DfnsSigner } from '../dfns/signer.js'
 import { getProvider, getNetworkConfig } from './networks.js'
 import type { TokenTransfer } from '../../schemas/token-transfer.schema.js'
 
-const ERC20_TRANSFER_ABI = [
-  'function transfer(address to, uint256 amount) returns (bool)',
-]
+const ERC20_TRANSFER_ABI = ['function transfer(address to, uint256 amount) returns (bool)']
 
 export interface TokenTransferResult {
   txHash: string
@@ -29,9 +27,10 @@ export async function executeTokenTransfer(event: TokenTransfer): Promise<TokenT
   const contract = new ethers.Contract(token.contractAddress, ERC20_TRANSFER_ABI, signer)
 
   const amountWei = ethers.parseUnits(transfer.amount, token.decimals)
-  const tx = await (
-    contract.getFunction('transfer')(transfer.toAddress, amountWei) as Promise<ethers.TransactionResponse>
-  )
+  const tx = await (contract.getFunction('transfer')(
+    transfer.toAddress,
+    amountWei,
+  ) as Promise<ethers.TransactionResponse>)
 
   const receipt = await tx.wait()
   if (!receipt) throw new Error('Transaction receipt unavailable after confirmation')
