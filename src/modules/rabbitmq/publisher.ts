@@ -7,7 +7,7 @@ export function publishSuccess(channel: amqplib.Channel, event: CreationSuccessE
   Sentry.addBreadcrumb({
     category: 'rabbitmq.publish',
     message: `Published token.creation.succeeded → ${env.EXCHANGE_RESPONSE_TOKEN_CREATED}`,
-    data: event as unknown as Record<string, unknown>,
+    data: event,
     level: 'info',
   })
   captureMessage('RabbitMQ message published: token.creation.succeeded', 'info', {
@@ -30,7 +30,7 @@ export function publishError(channel: amqplib.Channel, event: CreationErrorEvent
   Sentry.addBreadcrumb({
     category: 'rabbitmq.publish',
     message: `Published token.creation.failed → ${env.RABBITMQ_ERROR_EXCHANGE}`,
-    data: event as unknown as Record<string, unknown>,
+    data: event,
     level: 'warning',
   })
   captureMessage('RabbitMQ message published: token.creation.failed', 'warning', {

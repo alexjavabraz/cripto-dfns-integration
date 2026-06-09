@@ -1,11 +1,11 @@
-import Fastify, { type FastifyError } from 'fastify'
+import Fastify, { type FastifyError, type FastifyInstance } from 'fastify'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import * as Sentry from '@sentry/node'
 import { env } from './config/env.js'
 import { logger } from './utils/logger.js'
 
-export async function buildApp(): Promise<ReturnType<typeof Fastify>> {
+export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false, // We use our own structured logger
     trustProxy: true,

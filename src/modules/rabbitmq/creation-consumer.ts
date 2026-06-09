@@ -135,7 +135,7 @@ export async function startCreationConsumer(channel: amqplib.Channel): Promise<v
           retryable: false,
         },
         metadata: {
-          correlationId: (rawPayload as Record<string, unknown>)?.['metadata'] as unknown as string ?? 'unknown',
+          correlationId: (rawPayload as Record<string, unknown>)?.['metadata'] as string ?? 'unknown',
           processedBy: PROCESSED_BY,
           durationMs: Date.now() - startMs,
         },

@@ -2,6 +2,7 @@ import { initSentry, captureError } from './config/sentry.js'
 import { env } from './config/env.js'
 import { logger } from './utils/logger.js'
 import { buildApp } from './app.js'
+import type { FastifyInstance } from 'fastify'
 import { connect, disconnect } from './modules/rabbitmq/connection.js'
 import { startConsumer } from './modules/rabbitmq/consumer.js'
 import { startCreationConsumer } from './modules/rabbitmq/creation-consumer.js'
@@ -19,7 +20,7 @@ async function main(): Promise<void> {
   logger.info('Starting dfns_integration service', { nodeEnv: env.NODE_ENV })
 
   // --- Start Fastify (health check) ---
-  const app = await buildApp()
+  const app: FastifyInstance = await buildApp()
   await app.listen({ port: env.PORT, host: '0.0.0.0' })
   logger.info(`HTTP server listening on port ${env.PORT}`)
 

@@ -24,7 +24,7 @@ export async function processTokenMessage(rawPayload: unknown): Promise<Deployme
   }
 
   const message = { ...parsed.data, correlationId: parsed.data.correlationId ?? correlationId }
-  const safePayload = sanitizePayload(message as unknown as Record<string, unknown>)
+  const safePayload = sanitizePayload(message)
 
   logger.info('Processing token deployment', safePayload)
   captureMessage('Token deployment started', 'info', safePayload)

@@ -24,7 +24,7 @@ function loadArtifact(contractName: string): ContractArtifact {
     `${contractName}.json`,
   )
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const raw = require(artifactPath) as { abi: InterfaceAbi; bytecode: string }
   return { abi: raw.abi, bytecode: raw.bytecode }
 }
