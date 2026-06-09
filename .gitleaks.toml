@@ -1,0 +1,8 @@
+title = "Gitleaks Configuration"
+
+[allowlist]
+description = "Allow example/documentation values"
+paths = [
+  # README contains example idempotencyKey values that trigger generic-api-key rule
+  "README.md",
+]
