@@ -11,6 +11,7 @@ import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
 import { captureError, captureMessage } from '../../config/sentry.js'
 import { executeTokenTransfer } from '../token/token-transfer.js'
+import type { TokenTransfer } from '../../schemas/token-transfer.schema.js'
 
 const PROCESSED_BY = 'dfns-integration'
 
@@ -64,7 +65,7 @@ function publishResponse(
   )
 }
 
-function buildFakeTransferEvent(msg: UserTransferMessage) {
+function buildFakeTransferEvent(msg: UserTransferMessage): TokenTransfer {
   return {
     event: 'token.transfer.requested' as const,
     idempotencyKey: msg.requestId,
