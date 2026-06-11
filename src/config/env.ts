@@ -55,6 +55,11 @@ const envSchema = z.object({
   QUEUE_ACCOUNT_CREATE_REQUEST: z.string().default('dfns_listen_account_create_request'),
   EXCHANGE_ACCOUNT_CREATE_RESPONSE: z.string().default('dfns_publish_account_create_response'),
 
+  // User transfer (admin-approved, uses user's own DFNS wallet)
+  EXCHANGE_USER_TRANSFER_REQUEST: z.string().default('bff_publish_user_transfer_request'),
+  QUEUE_USER_TRANSFER_REQUEST: z.string().default('dfns_listen_user_transfer_request'),
+  EXCHANGE_USER_TRANSFER_RESPONSE: z.string().default('dfns_publish_user_transfer_response'),
+
   // Sentry
   SENTRY_DSN: z.string().url(),
 
