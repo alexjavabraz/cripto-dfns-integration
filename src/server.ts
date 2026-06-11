@@ -11,6 +11,7 @@ import { startBalanceConsumer } from './modules/rabbitmq/balance-consumer.js'
 import { startTokenEventConsumer } from './modules/rabbitmq/token-event-consumer.js'
 import { startTransferConsumer } from './modules/rabbitmq/transfer-consumer.js'
 import { startAccountConsumer } from './modules/rabbitmq/account-consumer.js'
+import { startUserTransferConsumer } from './modules/rabbitmq/user-transfer-consumer.js'
 import { loadWalletRegistry } from './modules/dfns/wallet-registry.js'
 
 // Initialize Sentry first — before anything else can throw
@@ -106,6 +107,16 @@ async function main(): Promise<void> {
     captureError(error, {
       context: 'startup:account-consumer',
       exchange: env.EXCHANGE_ACCOUNT_CREATE_REQUEST,
+    })
+    throw error
+  }
+
+  try {
+    await startUserTransferConsumer(channel)
+  } catch (error) {
+    captureError(error, {
+      context: 'startup:user-transfer-consumer',
+      exchange: env.EXCHANGE_USER_TRANSFER_REQUEST,
     })
     throw error
   }

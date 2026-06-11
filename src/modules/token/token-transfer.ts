@@ -19,9 +19,9 @@ export interface TokenTransferResult {
   gasUsed: string
 }
 
-export async function executeTokenTransfer(event: TokenTransfer): Promise<TokenTransferResult> {
+export async function executeTokenTransfer(event: TokenTransfer, fromWalletId?: string): Promise<TokenTransferResult> {
   const { network, token, transfer } = event
-  const { walletId } = getNetworkConfig(network)
+  const walletId = fromWalletId ?? getNetworkConfig(network).walletId
   const provider = getProvider(network)
   const signer = new DfnsSigner(getDfnsClient(), walletId, provider)
   const contract = new ethers.Contract(token.contractAddress, ERC20_TRANSFER_ABI, signer)
