@@ -54,9 +54,7 @@ function publishResponse(
   event: UserTransferSuccessResponse | UserTransferErrorResponse,
 ): void {
   const routingKey =
-    event.event === 'user.transfer.completed'
-      ? 'user.transfer.completed'
-      : 'user.transfer.failed'
+    event.event === 'user.transfer.completed' ? 'user.transfer.completed' : 'user.transfer.failed'
   channel.publish(
     env.EXCHANGE_USER_TRANSFER_RESPONSE,
     routingKey,
@@ -127,7 +125,10 @@ export async function startUserTransferConsumer(channel: amqplib.Channel): Promi
         event: 'user.transfer.failed',
         requestId,
         userId,
-        error: { code: 'VALIDATION_ERROR', message: `Validation failed: ${JSON.stringify(issues.fieldErrors)}` },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Validation failed: ${JSON.stringify(issues.fieldErrors)}`,
+        },
         metadata: { processedBy: PROCESSED_BY, durationMs: Date.now() - startMs },
       }
       publishResponse(channel, errorEvent)

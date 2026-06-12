@@ -19,7 +19,10 @@ export interface TokenTransferResult {
   gasUsed: string
 }
 
-export async function executeTokenTransfer(event: TokenTransfer, fromWalletId?: string): Promise<TokenTransferResult> {
+export async function executeTokenTransfer(
+  event: TokenTransfer,
+  fromWalletId?: string,
+): Promise<TokenTransferResult> {
   const { network, token, transfer } = event
   const walletId = fromWalletId ?? getNetworkConfig(network).walletId
   const provider = getProvider(network)
