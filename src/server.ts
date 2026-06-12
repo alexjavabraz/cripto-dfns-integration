@@ -12,6 +12,7 @@ import { startTokenEventConsumer } from './modules/rabbitmq/token-event-consumer
 import { startTransferConsumer } from './modules/rabbitmq/transfer-consumer.js'
 import { startAccountConsumer } from './modules/rabbitmq/account-consumer.js'
 import { startUserTransferConsumer } from './modules/rabbitmq/user-transfer-consumer.js'
+import { startContractEventPoller } from './modules/token/contract-event-poller.js'
 import { loadWalletRegistry } from './modules/dfns/wallet-registry.js'
 
 // Initialize Sentry first — before anything else can throw
@@ -120,6 +121,9 @@ async function main(): Promise<void> {
     })
     throw error
   }
+
+  // --- Contract event poller (on-chain Transfer indexing) ---
+  startContractEventPoller(channel)
 
   // --- Graceful shutdown ---
   const shutdown = async (signal: string): Promise<void> => {
