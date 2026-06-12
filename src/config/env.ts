@@ -60,13 +60,6 @@ const envSchema = z.object({
   QUEUE_USER_TRANSFER_REQUEST: z.string().default('dfns_listen_user_transfer_request'),
   EXCHANGE_USER_TRANSFER_RESPONSE: z.string().default('dfns_publish_user_transfer_response'),
 
-  // Contract event poller — on-chain Transfer event indexing
-  // WATCHED_CONTRACTS format: "network:0xcontract,..." e.g. "ethereumsepolia:0x1234...,polygon:0xabcd..."
-  WATCHED_CONTRACTS: z.string().optional(),
-  ETHEREUM_SEPOLIA_RPC: z.string().url().default('https://ethereum-sepolia-rpc.publicnode.com'),
-  EXCHANGE_EXTERNAL_TRANSFER: z.string().default('dfns_publish_external_transfer'),
-  BLOCK_POLL_INTERVAL_MS: z.coerce.number().int().min(5000).default(15000),
-
   // Sentry
   SENTRY_DSN: z.string().url(),
 
