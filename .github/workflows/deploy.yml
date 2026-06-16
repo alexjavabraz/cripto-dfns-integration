@@ -66,6 +66,7 @@ jobs:
             docker run -d \
               --name dfns \
               --restart unless-stopped \
+              --network cripto-net \
               --env-file ~/cripto-dfns/.env \
               "$ECR_REGISTRY/cripto/dfns_integration:latest"
             docker image prune -f
