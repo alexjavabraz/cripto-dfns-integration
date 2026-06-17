@@ -9,7 +9,7 @@ import { z } from 'zod'
 import type amqplib from 'amqplib'
 import { env } from '../../config/env.js'
 import { logger } from '../../utils/logger.js'
-import { captureError, captureMessage } from '../../config/sentry.js'
+import { captureError, captureMessage, Sentry } from '../../config/sentry.js'
 import { executeTokenTransfer } from '../token/token-transfer.js'
 import type { TokenTransfer } from '../../schemas/token-transfer.schema.js'
 
@@ -95,6 +95,12 @@ export async function startUserTransferConsumer(channel: amqplib.Channel): Promi
     // Parse JSON
     try {
       rawPayload = JSON.parse(msg.content.toString('utf-8')) as unknown
+      Sentry.addBreadcrumb({
+        category: 'rabbitmq.receive',
+        message: `Message received from queue ${queue}`,
+        data: rawPayload as Record<string, unknown>,
+        level: 'info',
+      })
     } catch (err) {
       logger.error('Failed to parse user transfer message', {
         queue,
