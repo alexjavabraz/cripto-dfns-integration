@@ -9,6 +9,7 @@ import {
 } from '../../schemas/account-create.schema.js'
 import { getDfnsClient } from '../dfns/client.js'
 import type { CreateWalletBody } from '@dfns/sdk/generated/wallets/types.js'
+import { sendGasToNewWallet } from '../token/gas-fund.js'
 
 const PROCESSED_BY = 'dfns-integration'
 
@@ -136,6 +137,13 @@ export async function startAccountConsumer(channel: amqplib.Channel): Promise<vo
         walletId: wallet.id,
         address: wallet.address,
       })
+
+      // Best-effort gas funding — does not block consumer ack
+      if (wallet.address) {
+        sendGasToNewWallet(wallet.address, network).catch(() => {
+          // errors already logged inside sendGasToNewWallet
+        })
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
       logger.error('Account wallet creation failed', {

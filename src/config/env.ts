@@ -60,6 +60,9 @@ const envSchema = z.object({
   QUEUE_USER_TRANSFER_REQUEST: z.string().default('dfns_listen_user_transfer_request'),
   EXCHANGE_USER_TRANSFER_RESPONSE: z.string().default('dfns_publish_user_transfer_response'),
 
+  // Gas funding for new wallets
+  GAS_FUND_AMOUNT_ETH: z.string().default('0.001'),
+
   // Sentry
   SENTRY_DSN: z.string().url(),
 
