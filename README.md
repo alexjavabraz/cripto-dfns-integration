@@ -4,7 +4,11 @@
 [![CI](https://github.com/alexjavabraz/cripto-dfns-integration/actions/workflows/ci.yml/badge.svg)](https://github.com/alexjavabraz/cripto-dfns-integration/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A production-ready service that listens to RabbitMQ queues and deploys ERC-20, ERC-721, and ERC-1155 smart contracts on EVM networks using [DFNS](https://www.dfns.co) MPC wallets for signing.
+**dfns-integration** is a backend service that automates the creation and management of blockchain tokens. It receives requests from an internal message queue, deploys smart contracts on Ethereum-compatible networks, and signs transactions securely without ever storing private keys — signing is delegated to [DFNS](https://www.dfns.co), a cloud-based cryptographic key management service.
+
+In plain terms: when another service in the platform needs to issue a new digital token (or transfer, mint, or burn an existing one), it sends a message to this service, which handles the blockchain interaction and reports back the result.
+
+> **Technical summary:** Consumes RabbitMQ queues → deploys ERC-20/721/1155 smart contracts on EVM networks → signs transactions via DFNS MPC wallets → publishes results to response exchanges.
 
 ## Overview
 
