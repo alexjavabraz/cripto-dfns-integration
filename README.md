@@ -1,5 +1,9 @@
 # dfns_integration
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/REPLACE_WITH_PROJECT_ID/badge)](https://www.bestpractices.dev/projects/REPLACE_WITH_PROJECT_ID)
+[![CI](https://github.com/alexjavabraz/cripto-dfns-integration/actions/workflows/ci.yml/badge.svg)](https://github.com/alexjavabraz/cripto-dfns-integration/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 A production-ready service that listens to RabbitMQ queues and deploys ERC-20, ERC-721, and ERC-1155 smart contracts on EVM networks using [DFNS](https://www.dfns.co) MPC wallets for signing.
 
 ## Overview
