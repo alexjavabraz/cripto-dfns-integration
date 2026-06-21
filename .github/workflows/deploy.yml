@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Docker image tag to deploy (default: github.sha of caller)
+        type: string
+        required: false
 
 env:
   AWS_REGION:     us-east-1
@@ -14,13 +20,70 @@ permissions:
   contents: read
 
 jobs:
+  # ─────────────────────────────────────────────
+  # 1. Gate: wait for CI to pass on push events
+  # ─────────────────────────────────────────────
+  ci-gate:
+    name: Wait for CI
+    runs-on: ubuntu-latest
+    # Only gate on direct push — workflow_call and workflow_dispatch skip this
+    if: github.event_name == 'push'
+    steps:
+      - name: Wait for Code Quality check
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Code Quality
+          ref: ${{ github.sha }}
+          timeoutSeconds: 600
+          intervalSeconds: 15
+
+      - name: Wait for Tests check
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Tests
+          ref: ${{ github.sha }}
+          timeoutSeconds: 600
+          intervalSeconds: 15
+
+      - name: Wait for Docker Build & Scan check
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Docker Build & Scan
+          ref: ${{ github.sha }}
+          timeoutSeconds: 600
+          intervalSeconds: 15
+
+  # ─────────────────────────────────────────────
+  # 2. Build → ECR → EC2
+  # ─────────────────────────────────────────────
   deploy:
     name: Build & Deploy dfns-integration
     runs-on: ubuntu-latest
+    needs: [ci-gate]
+    # Run for workflow_dispatch and workflow_call even without ci-gate
+    if: |
+      always() &&
+      (needs.ci-gate.result == 'success' || needs.ci-gate.result == 'skipped')
+
+    concurrency:
+      group: deploy-ec2-dfns
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -36,43 +99,94 @@ jobs:
       - name: Build and push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG:    ${{ github.sha }}
+          IMAGE_TAG:    ${{ steps.tag.outputs.image_tag }}
         run: |
           IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
           docker build \
             -t "$IMAGE" \
             -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
+            --label "git.sha=$IMAGE_TAG" \
+            --label "git.ref=${{ github.ref_name }}" \
             -f Dockerfile .
 
           docker push "$IMAGE"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
           echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$IMAGE_TAG"        >> $GITHUB_ENV
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
+        env:
+          ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
+          IMAGE_TAG:    ${{ env.IMAGE_TAG }}
+          AWS_REGION:   ${{ env.AWS_REGION }}
+          GIT_SHA:      ${{ github.sha }}
+          DEPLOY_TS:    ${{ github.event.head_commit.timestamp }}
         with:
           host:     ${{ secrets.EC2_HOST }}
           username: ec2-user
           key:      ${{ secrets.EC2_SSH_KEY }}
-          envs:     ECR_REGISTRY,AWS_REGION
+          envs:     ECR_REGISTRY,IMAGE_TAG,AWS_REGION,GIT_SHA,DEPLOY_TS
           script: |
             set -e
+
+            # --- Authenticate to ECR ---
             aws ecr get-login-password --region "$AWS_REGION" | \
               docker login --username AWS --password-stdin "$ECR_REGISTRY"
-            docker pull "$ECR_REGISTRY/cripto/dfns_integration:latest"
-            docker rm -f dfns || true
+
+            # --- Pull new image ---
+            docker pull "$ECR_REGISTRY/cripto/dfns_integration:$IMAGE_TAG"
+
+            # --- Stop and remove old container ---
+            docker rm -f dfns-integration 2>/dev/null || true
+
+            # --- Start new container on cripto-net ---
             docker run -d \
-              --name dfns \
+              --name dfns-integration \
               --restart unless-stopped \
               --network cripto-net \
               --env-file ~/cripto-dfns/.env \
-              "$ECR_REGISTRY/cripto/dfns_integration:latest"
+              "$ECR_REGISTRY/cripto/dfns_integration:$IMAGE_TAG"
+
+            # --- Wait for health check (up to 60 s) ---
+            echo "Waiting for container to become healthy..."
+            for i in $(seq 1 12); do
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' dfns-integration 2>/dev/null || echo "unknown")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "Container is healthy (attempt $i)"
+                break
+              fi
+              if [ "$STATUS" = "unhealthy" ]; then
+                echo "Container reported unhealthy — aborting"
+                docker logs --tail 50 dfns-integration
+                exit 1
+              fi
+              echo "  Status: $STATUS (attempt $i/12)..."
+              sleep 5
+            done
+
+            # --- Confirm container is running ---
+            docker ps --filter "name=dfns-integration" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+
+            # --- Write version file for tracking ---
+            mkdir -p /opt/dfns-integration
+            cat > /opt/dfns-integration/version.txt <<EOF
+            git_sha=${GIT_SHA}
+            image_tag=${IMAGE_TAG}
+            deployed_at=${DEPLOY_TS:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+            deployed_by=github-actions
+            EOF
+            echo "Version file written to /opt/dfns-integration/version.txt"
+
+            # --- Clean up dangling images ---
             docker image prune -f
 
       - name: Deployment summary
         run: |
-          echo "✅ dfns-integration deployed to EC2"
-          echo "   Host  : ${{ secrets.EC2_HOST }}"
-          echo "   Image : ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          echo "dfns-integration deployed to EC2"
+          echo "   Host     : ${{ secrets.EC2_HOST }}"
+          echo "   Image    : ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          echo "   SHA      : ${{ github.sha }}"
+          echo "   Ref      : ${{ github.ref_name }}"

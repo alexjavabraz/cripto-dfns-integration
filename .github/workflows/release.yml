@@ -1,0 +1,369 @@
+name: Release
+
+on:
+  release:
+    types: [prereleased, published]
+
+permissions:
+  contents: write   # create tags, update releases
+  id-token: write   # OIDC for AWS (deploy job)
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  # PRE-RELEASE: tag as release-candidate + trigger E2E suite
+  # ═══════════════════════════════════════════════════════════════
+  release-candidate:
+    name: Release Candidate — E2E gate
+    runs-on: ubuntu-latest
+    if: github.event.release.prerelease == true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from release tag
+        id: version
+        run: |
+          # Release tag may be "v1.2.0" or "1.2.0" — strip leading "v"
+          RAW_TAG="${{ github.event.release.tag_name }}"
+          VERSION="${RAW_TAG#v}"
+          echo "version=$VERSION"               >> "$GITHUB_OUTPUT"
+          echo "rc_tag=${VERSION}-release-candidate" >> "$GITHUB_OUTPUT"
+          echo "raw_tag=$RAW_TAG"               >> "$GITHUB_OUTPUT"
+
+      - name: Create release-candidate git tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RC_TAG="${{ steps.version.outputs.rc_tag }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RC_TAG" -m "Release candidate for ${{ steps.version.outputs.raw_tag }}"
+          git push origin "$RC_TAG"
+          echo "Created tag: $RC_TAG"
+
+      - name: Trigger E2E test suite (cripto-tests)
+        id: trigger-e2e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Dispatching e2e-run-requested to alexjavabraz/cripto-tests..."
+          HTTP_STATUS=$(curl -s -o /tmp/dispatch_response.json -w "%{http_code}" \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/alexjavabraz/cripto-tests/dispatches" \
+            -d '{
+              "event_type": "e2e-run-requested",
+              "client_payload": {
+                "repo":    "alexjavabraz/cripto-dfns-integration",
+                "version": "${{ steps.version.outputs.version }}",
+                "rc_tag":  "${{ steps.version.outputs.rc_tag }}",
+                "sha":     "${{ github.sha }}",
+                "release_id": "${{ github.event.release.id }}"
+              }
+            }')
+
+          cat /tmp/dispatch_response.json
+          if [ "$HTTP_STATUS" -ne 204 ]; then
+            echo "repository_dispatch failed with HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          echo "E2E dispatch accepted (HTTP 204)"
+
+      - name: Wait for E2E workflow to start and complete
+        id: wait-e2e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Waiting 30 s for the E2E workflow to be queued..."
+          sleep 30
+
+          # Poll for a workflow run in cripto-tests triggered by repository_dispatch
+          # with event type e2e-run-requested, created in the last 5 minutes
+          MAX_WAIT=900   # 15 minutes
+          POLL_INTERVAL=20
+          ELAPSED=0
+          RUN_ID=""
+
+          while [ -z "$RUN_ID" ] && [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
+            RUN_ID=$(curl -s \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/alexjavabraz/cripto-tests/actions/runs?event=repository_dispatch&per_page=5" \
+              | jq -r --arg version "$VERSION" '
+                  .workflow_runs[]
+                  | select(.status != "completed")
+                  | select(.display_title | contains($version))
+                  | .id' \
+              | head -1)
+
+            if [ -z "$RUN_ID" ]; then
+              # Also check recently completed runs in case it already finished
+              RUN_ID=$(curl -s \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/alexjavabraz/cripto-tests/actions/runs?event=repository_dispatch&per_page=5" \
+                | jq -r --arg version "$VERSION" '
+                    .workflow_runs[]
+                    | select(.display_title | contains($version))
+                    | .id' \
+                | head -1)
+            fi
+
+            if [ -z "$RUN_ID" ]; then
+              echo "  No matching E2E run found yet (${ELAPSED}s elapsed)..."
+              sleep "$POLL_INTERVAL"
+              ELAPSED=$((ELAPSED + POLL_INTERVAL))
+            fi
+          done
+
+          if [ -z "$RUN_ID" ]; then
+            echo "Timed out waiting for E2E workflow to start"
+            echo "e2e_conclusion=timed_out" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Found E2E run ID: $RUN_ID"
+          echo "e2e_run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+          # Now poll until the run completes
+          ELAPSED=0
+          CONCLUSION=""
+          while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
+            RUN_INFO=$(curl -s \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/alexjavabraz/cripto-tests/actions/runs/$RUN_ID")
+
+            STATUS=$(echo "$RUN_INFO"     | jq -r '.status')
+            CONCLUSION=$(echo "$RUN_INFO" | jq -r '.conclusion')
+
+            echo "  E2E run status: $STATUS / conclusion: $CONCLUSION (${ELAPSED}s elapsed)"
+
+            if [ "$STATUS" = "completed" ]; then
+              echo "E2E run completed with conclusion: $CONCLUSION"
+              break
+            fi
+
+            sleep "$POLL_INTERVAL"
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+
+          echo "e2e_conclusion=$CONCLUSION" >> "$GITHUB_OUTPUT"
+          echo "e2e_run_url=https://github.com/alexjavabraz/cripto-tests/actions/runs/$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on release — E2E passed
+        if: steps.wait-e2e.outputs.e2e_conclusion == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ github.event.release.id }}" \
+            -d '{
+              "body": "${{ github.event.release.body }}\n\n---\n**E2E passed** — ready to promote to release\n\nRelease candidate tag: `${{ steps.version.outputs.rc_tag }}`\nE2E run: ${{ steps.wait-e2e.outputs.e2e_run_url }}"
+            }'
+          echo "E2E passed comment posted to release"
+
+      - name: Comment on release — E2E failed
+        if: |
+          steps.wait-e2e.outputs.e2e_conclusion != 'success' &&
+          steps.wait-e2e.outputs.e2e_conclusion != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CONCLUSION="${{ steps.wait-e2e.outputs.e2e_conclusion }}"
+          RUN_URL="${{ steps.wait-e2e.outputs.e2e_run_url }}"
+          curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ github.event.release.id }}" \
+            -d "{
+              \"body\": \"${{ github.event.release.body }}\n\n---\n**E2E FAILED** (conclusion: ${CONCLUSION}) — do NOT promote to release without investigating.\n\nE2E run: ${RUN_URL}\",
+              \"prerelease\": true
+            }"
+          echo "E2E failed comment posted to release"
+          exit 1
+
+  # ═══════════════════════════════════════════════════════════════
+  # PUBLISHED RELEASE: tag v{version} + deploy to EC2
+  # ═══════════════════════════════════════════════════════════════
+  production-release:
+    name: Production Release — Tag & Deploy
+    runs-on: ubuntu-latest
+    if: github.event.release.prerelease == false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from release tag
+        id: version
+        run: |
+          RAW_TAG="${{ github.event.release.tag_name }}"
+          VERSION="${RAW_TAG#v}"
+          # Canonical tag always starts with "v"
+          VTAG="v${VERSION}"
+          echo "version=$VERSION"   >> "$GITHUB_OUTPUT"
+          echo "vtag=$VTAG"         >> "$GITHUB_OUTPUT"
+          echo "raw_tag=$RAW_TAG"   >> "$GITHUB_OUTPUT"
+
+      - name: Create versioned git tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VTAG="${{ steps.version.outputs.vtag }}"
+          # Skip if tag already exists (idempotent)
+          if git ls-remote --tags origin "$VTAG" | grep -q "$VTAG"; then
+            echo "Tag $VTAG already exists — skipping"
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$VTAG" -m "Production release $VTAG"
+            git push origin "$VTAG"
+            echo "Created tag: $VTAG"
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID_PROD }}:role/GitHubActionsRole
+          aws-region: us-east-1
+          role-session-name: dfns-release-${{ github.run_id }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push release image to ECR
+        env:
+          ECR_REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: cripto/dfns_integration
+          IMAGE_TAG:      ${{ github.sha }}
+          VERSION_TAG:    ${{ steps.version.outputs.vtag }}
+        run: |
+          IMAGE_SHA="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          IMAGE_VER="$ECR_REGISTRY/$ECR_REPOSITORY:$VERSION_TAG"
+          IMAGE_LATEST="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+          docker build \
+            -t "$IMAGE_SHA" \
+            -t "$IMAGE_VER" \
+            -t "$IMAGE_LATEST" \
+            --label "git.sha=$IMAGE_TAG" \
+            --label "release=$VERSION_TAG" \
+            -f Dockerfile .
+
+          docker push "$IMAGE_SHA"
+          docker push "$IMAGE_VER"
+          docker push "$IMAGE_LATEST"
+
+          echo "ECR_REGISTRY=$ECR_REGISTRY"     >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$IMAGE_TAG"            >> $GITHUB_ENV
+          echo "VERSION_TAG=$VERSION_TAG"        >> $GITHUB_ENV
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        env:
+          ECR_REGISTRY:  ${{ env.ECR_REGISTRY }}
+          IMAGE_TAG:     ${{ env.IMAGE_TAG }}
+          VERSION_TAG:   ${{ env.VERSION_TAG }}
+          AWS_REGION:    us-east-1
+          GIT_SHA:       ${{ github.sha }}
+          DEPLOY_TS:     ${{ github.event.release.published_at }}
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          envs:     ECR_REGISTRY,IMAGE_TAG,VERSION_TAG,AWS_REGION,GIT_SHA,DEPLOY_TS
+          script: |
+            set -e
+
+            # --- Authenticate to ECR ---
+            aws ecr get-login-password --region "$AWS_REGION" | \
+              docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+            # --- Pull versioned image ---
+            docker pull "$ECR_REGISTRY/cripto/dfns_integration:$IMAGE_TAG"
+
+            # --- Stop and remove old container ---
+            docker rm -f dfns-integration 2>/dev/null || true
+
+            # --- Start new container on cripto-net ---
+            docker run -d \
+              --name dfns-integration \
+              --restart unless-stopped \
+              --network cripto-net \
+              --env-file ~/cripto-dfns/.env \
+              "$ECR_REGISTRY/cripto/dfns_integration:$IMAGE_TAG"
+
+            # --- Wait for health check (up to 60 s) ---
+            echo "Waiting for container to become healthy..."
+            for i in $(seq 1 12); do
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' dfns-integration 2>/dev/null || echo "unknown")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "Container is healthy (attempt $i)"
+                break
+              fi
+              if [ "$STATUS" = "unhealthy" ]; then
+                echo "Container reported unhealthy — aborting"
+                docker logs --tail 50 dfns-integration
+                exit 1
+              fi
+              echo "  Status: $STATUS (attempt $i/12)..."
+              sleep 5
+            done
+
+            # --- Confirm container is running ---
+            docker ps --filter "name=dfns-integration" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+
+            # --- Write version file ---
+            mkdir -p /opt/dfns-integration
+            cat > /opt/dfns-integration/version.txt <<EOF
+            git_sha=${GIT_SHA}
+            image_tag=${IMAGE_TAG}
+            version=${VERSION_TAG}
+            deployed_at=${DEPLOY_TS:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+            deployed_by=github-actions-release
+            EOF
+            echo "Version file written to /opt/dfns-integration/version.txt"
+
+            # --- Clean up dangling images ---
+            docker image prune -f
+
+      - name: Add release notes summary as comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_NOTES="${{ github.event.release.body }}"
+          curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ github.event.release.id }}" \
+            -d "{
+              \"body\": \"${RELEASE_NOTES}\n\n---\n**Deployed to production**\n\nVersion tag: \`${{ env.VERSION_TAG }}\`\nImage: \`${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}\`\nSHA: \`${{ github.sha }}\`\nDeployed at: ${{ github.event.release.published_at }}\"
+            }"
+          echo "Release notes comment posted"
+
+      - name: Deployment summary
+        run: |
+          echo "Production release deployed"
+          echo "   Version  : ${{ env.VERSION_TAG }}"
+          echo "   SHA      : ${{ github.sha }}"
+          echo "   Host     : ${{ secrets.EC2_HOST }}"
+          echo "   Image    : ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
