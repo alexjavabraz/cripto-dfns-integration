@@ -38,7 +38,7 @@ describe('tokenTransferSchema', () => {
   })
 
   it('requires idempotencyKey', () => {
-    const { idempotencyKey, ...rest } = validTransfer
+    const { idempotencyKey: _idempotencyKey, ...rest } = validTransfer
     const result = tokenTransferSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
@@ -100,7 +100,7 @@ describe('tokenTransferSchema', () => {
   })
 
   it('accepts without optional metadata', () => {
-    const { metadata, ...rest } = validTransfer
+    const { metadata: _metadata, ...rest } = validTransfer
     const result = tokenTransferSchema.safeParse(rest)
     expect(result.success).toBe(true)
   })

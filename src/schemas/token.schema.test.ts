@@ -54,7 +54,7 @@ describe('tokenMessageSchema — ERC20', () => {
   })
 
   it('defaults decimals to 18', () => {
-    const { decimals, ...rest } = validERC20
+    const { decimals: _decimals, ...rest } = validERC20
     const result = tokenMessageSchema.safeParse(rest)
     expect(result.success).toBe(true)
     if (result.success && result.data.type === 'ERC20') {
@@ -72,19 +72,19 @@ describe('tokenMessageSchema — ERC20', () => {
   })
 
   it('rejects missing name', () => {
-    const { name, ...rest } = validERC20
+    const { name: _name, ...rest } = validERC20
     const result = tokenMessageSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
 
   it('rejects missing symbol', () => {
-    const { symbol, ...rest } = validERC20
+    const { symbol: _symbol, ...rest } = validERC20
     const result = tokenMessageSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
 
   it('rejects missing ownerAddress', () => {
-    const { ownerAddress, ...rest } = validERC20
+    const { ownerAddress: _ownerAddress, ...rest } = validERC20
     const result = tokenMessageSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
@@ -159,7 +159,7 @@ describe('tokenMessageSchema — ERC721', () => {
   })
 
   it('rejects missing name for ERC721', () => {
-    const { name, ...rest } = validERC721
+    const { name: _nameErc721, ...rest } = validERC721
     const result = tokenMessageSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
@@ -196,7 +196,7 @@ describe('tokenMessageSchema — ERC1155', () => {
   })
 
   it('rejects missing ownerAddress', () => {
-    const { ownerAddress, ...rest } = validERC1155
+    const { ownerAddress: _ownerAddressErc1155, ...rest } = validERC1155
     const result = tokenMessageSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })

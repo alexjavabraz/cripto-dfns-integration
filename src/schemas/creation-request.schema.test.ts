@@ -42,7 +42,7 @@ describe('creationRequestMessageSchema', () => {
     })
 
     it('requires idempotencyKey', () => {
-      const { idempotencyKey, ...rest } = validERC20
+      const { idempotencyKey: _idempotencyKey, ...rest } = validERC20
       const result = creationRequestMessageSchema.safeParse(rest)
       expect(result.success).toBe(false)
     })

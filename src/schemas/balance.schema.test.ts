@@ -25,7 +25,7 @@ describe('balanceRequestSchema', () => {
   })
 
   it('requires idempotencyKey', () => {
-    const { idempotencyKey, ...rest } = validRequest
+    const { idempotencyKey: _idempotencyKey, ...rest } = validRequest
     const result = balanceRequestSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })

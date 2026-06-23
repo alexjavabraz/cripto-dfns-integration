@@ -31,7 +31,7 @@ describe('accountCreateSchema', () => {
   })
 
   it('requires userId', () => {
-    const { userId, ...rest } = validRequest
+    const { userId: _userId, ...rest } = validRequest
     const result = accountCreateSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
@@ -42,7 +42,7 @@ describe('accountCreateSchema', () => {
   })
 
   it('defaults network to EthereumSepolia', () => {
-    const { network, ...rest } = validRequest
+    const { network: _network, ...rest } = validRequest
     const result = accountCreateSchema.safeParse(rest)
     expect(result.success).toBe(true)
     if (result.success) {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 
 // We test the schema validation logic directly without importing env.ts
@@ -71,7 +71,7 @@ describe('env schema validation', () => {
     })
 
     it('rejects missing DFNS_API_URL', () => {
-      const { DFNS_API_URL, ...rest } = validBase
+      const { DFNS_API_URL: _dfnsApiUrl, ...rest } = validBase
       const result = envSchema.safeParse(rest)
       expect(result.success).toBe(false)
     })
@@ -82,7 +82,7 @@ describe('env schema validation', () => {
     })
 
     it('rejects missing RABBITMQ_URL', () => {
-      const { RABBITMQ_URL, ...rest } = validBase
+      const { RABBITMQ_URL: _rabbitmqUrl, ...rest } = validBase
       const result = envSchema.safeParse(rest)
       expect(result.success).toBe(false)
     })
@@ -93,7 +93,7 @@ describe('env schema validation', () => {
     })
 
     it('rejects missing SENTRY_DSN', () => {
-      const { SENTRY_DSN, ...rest } = validBase
+      const { SENTRY_DSN: _sentryDsn, ...rest } = validBase
       const result = envSchema.safeParse(rest)
       expect(result.success).toBe(false)
     })
