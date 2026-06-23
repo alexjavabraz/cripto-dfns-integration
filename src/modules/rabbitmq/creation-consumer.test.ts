@@ -177,9 +177,7 @@ describe('startCreationConsumer', () => {
     const uniqueKey = `success-key-${Date.now()}-${Math.random()}`
     const channel = makeChannel()
     await startCreationConsumer(channel as unknown as amqplib.Channel)
-    await channel._triggerConsume(
-      makeMsg({ ...validCreationRequest, idempotencyKey: uniqueKey }),
-    )
+    await channel._triggerConsume(makeMsg({ ...validCreationRequest, idempotencyKey: uniqueKey }))
 
     expect(channel.ack).toHaveBeenCalled()
     expect(mockPublishSuccess).toHaveBeenCalledOnce()

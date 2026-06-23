@@ -44,9 +44,7 @@ function makeDfnsClient(overrides: Record<string, unknown> = {}) {
   return {
     wallets: {
       getWallet: vi.fn().mockResolvedValue({ id: walletId, address: walletAddress }),
-      broadcastTransaction: vi
-        .fn()
-        .mockResolvedValue({ id: 'dfns-tx-001', status: 'Pending' }),
+      broadcastTransaction: vi.fn().mockResolvedValue({ id: 'dfns-tx-001', status: 'Pending' }),
       getTransaction: vi.fn().mockResolvedValue({ txHash: fakeTxHash, status: 'Broadcasted' }),
       ...(overrides['wallets'] as Record<string, unknown> | undefined),
     },
@@ -82,9 +80,7 @@ describe('DfnsSigner', () => {
       dfnsClient.wallets.getWallet = vi.fn().mockResolvedValue({ id: walletId, address: null })
 
       const signer = new DfnsSigner(dfnsClient as never, walletId, provider as never)
-      await expect(signer.getAddress()).rejects.toThrow(
-        `DFNS wallet ${walletId} has no address`,
-      )
+      await expect(signer.getAddress()).rejects.toThrow(`DFNS wallet ${walletId} has no address`)
     })
   })
 
@@ -206,8 +202,9 @@ describe('DfnsSigner', () => {
       vi.useFakeTimers()
 
       const txPromise = signer.sendTransaction({ to: '0xabc' })
+      const rejectCheck = expect(txPromise).rejects.toThrow('Failed')
       await vi.runAllTimersAsync()
-      await expect(txPromise).rejects.toThrow('Failed')
+      await rejectCheck
       vi.useRealTimers()
     })
 
@@ -222,8 +219,9 @@ describe('DfnsSigner', () => {
       vi.useFakeTimers()
 
       const txPromise = signer.sendTransaction({ to: '0xabc' })
+      const rejectCheck = expect(txPromise).rejects.toThrow('Rejected')
       await vi.runAllTimersAsync()
-      await expect(txPromise).rejects.toThrow('Rejected')
+      await rejectCheck
       vi.useRealTimers()
     })
 
@@ -236,8 +234,9 @@ describe('DfnsSigner', () => {
       vi.useFakeTimers()
 
       const txPromise = signer.sendTransaction({ to: '0xabc' })
+      const rejectCheck = expect(txPromise).rejects.toThrow('not found on provider')
       await vi.runAllTimersAsync()
-      await expect(txPromise).rejects.toThrow('not found on provider')
+      await rejectCheck
       vi.useRealTimers()
     })
 

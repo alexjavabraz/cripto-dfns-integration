@@ -19,7 +19,10 @@ vi.mock('../../config/sentry.js', () => ({
 }))
 
 import { publishSuccess, publishError } from './publisher.js'
-import type { CreationSuccessEvent, CreationErrorEvent } from '../../schemas/creation-request.schema.js'
+import type {
+  CreationSuccessEvent,
+  CreationErrorEvent,
+} from '../../schemas/creation-request.schema.js'
 
 const validAddress = '0xabcdef1234567890abcdef1234567890abcdef12'
 

@@ -189,9 +189,9 @@ describe('tokenMessageSchema — ERC1155', () => {
   it('rejects metadata.uri that is not a URL', () => {
     const result = tokenMessageSchema.safeParse({
       ...validERC1155,
-      metadata: { uri: "not-a-url-at-all-!!!" },
+      metadata: { uri: 'not-a-url-at-all-!!!' },
     })
-    
+
     expect(result.success).toBe(false)
   })
 

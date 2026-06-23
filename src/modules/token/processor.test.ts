@@ -101,9 +101,9 @@ describe('processTokenMessage', () => {
   })
 
   it('throws for invalid payload (wrong event type)', async () => {
-    await expect(
-      processTokenMessage({ ...validERC20Message, type: 'ERC777' }),
-    ).rejects.toThrow('Invalid token message')
+    await expect(processTokenMessage({ ...validERC20Message, type: 'ERC777' })).rejects.toThrow(
+      'Invalid token message',
+    )
   })
 
   it('processes ERC20 and returns deployment result', async () => {
