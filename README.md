@@ -10,6 +10,15 @@ In plain terms: when another service in the platform needs to issue a new digita
 
 > **Technical summary:** Consumes RabbitMQ queues → deploys ERC-20/721/1155 smart contracts on EVM networks → signs transactions via DFNS MPC wallets → publishes results to response exchanges.
 
+## Platform
+
+This service is part of a full-stack tokenization platform. Explore the live environment:
+
+| Component | URL | Description |
+|---|---|---|
+| Dashboard | [tokeniza.net](https://tokeniza.net) | User-facing interface — token operations, FIAT ↔ token conversions, transfers |
+| Developer Portal | [developers.tokeniza.online](https://developers.tokeniza.online) | CaaS API access, onboarding, and API key management |
+
 ## Overview
 
 ```
