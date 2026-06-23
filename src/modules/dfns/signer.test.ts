@@ -48,7 +48,7 @@ function makeDfnsClient(overrides: Record<string, unknown> = {}) {
         .fn()
         .mockResolvedValue({ id: 'dfns-tx-001', status: 'Pending' }),
       getTransaction: vi.fn().mockResolvedValue({ txHash: fakeTxHash, status: 'Broadcasted' }),
-      ...overrides.wallets,
+      ...(overrides['wallets'] as Record<string, unknown> | undefined),
     },
     ...overrides,
   }

@@ -48,7 +48,7 @@ describe('tokenMessageSchema — ERC20', () => {
   it('converts symbol to uppercase', () => {
     const result = tokenMessageSchema.safeParse({ ...validERC20, symbol: 'brln' })
     expect(result.success).toBe(true)
-    if (result.success) {
+    if (result.success && result.data.type === 'ERC20') {
       expect(result.data.symbol).toBe('BRLN')
     }
   })

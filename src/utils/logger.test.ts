@@ -11,8 +11,8 @@ vi.mock('../config/env.js', () => ({
 import { logger } from './logger.js'
 
 describe('logger', () => {
-  let stdoutSpy: ReturnType<typeof vi.spyOn>
-  let stderrSpy: ReturnType<typeof vi.spyOn>
+  let stdoutSpy: { mock: { calls: unknown[][] }; mockRestore(): void }
+  let stderrSpy: { mock: { calls: unknown[][] }; mockRestore(): void }
 
   beforeEach(() => {
     stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
